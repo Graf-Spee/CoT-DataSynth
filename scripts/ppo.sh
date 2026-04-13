@@ -3,7 +3,7 @@
 
 # ============================ Configurations ===========================
 PROJECT_DIR="$HOME/CoT-Data-verl"   # !!!!! Change this to where you want to save logs!!!!!
-STORE_DIR="/data/hjw"               # !!!!! Change this to where you want to save checkpoints!!!!!
+STORE_DIR="/data/hrh"               # !!!!! Change this to where you want to save checkpoints!!!!!
 
 MODEL_NAME="Qwen2.5-0.5B"
 DATA_NAME="gsm8k"
