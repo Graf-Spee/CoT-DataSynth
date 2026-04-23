@@ -21,7 +21,7 @@ def extract_solution(solution_str, method="strict"):
     @misc{2023opencompass,
         title={OpenCompass: A Universal Evaluation Platform for Foundation Models},
         author={OpenCompass Contributors},
-        howpublished = {\url{https://github.com/open-compass/opencompass}},
+        howpublished = {\\url{https://github.com/open-compass/opencompass}},
         year={2023}
     }
     """
