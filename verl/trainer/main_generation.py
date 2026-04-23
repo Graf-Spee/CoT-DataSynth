@@ -51,6 +51,8 @@ def run_generation(config) -> None:
         ray.init(
             runtime_env={"env_vars": {"TOKENIZERS_PARALLELISM": "true", "NCCL_DEBUG": "WARN"}},
             num_cpus=config.ray_init.num_cpus,
+            object_store_memory=10**10,
+            _memory=10**10,
         )
 
     ray.get(main_task.remote(config))
