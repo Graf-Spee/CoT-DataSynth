@@ -105,9 +105,10 @@ def main():
     config_env_path = current_script_dir / "../../config/bash_config.env" 
     load_dotenv(config_env_path)
     cot_datasynth_dir = os.getenv("REPO_DIR")
-    print(f"cot_datasynth_dir: {cot_datasynth_dir}")
     if cot_datasynth_dir is None:
-        raise ValueError("Could not find CoT-DataSynth directory. Please specify REPO_DIR in config/bash_config.env.")        
+        raise ValueError("Could not find CoT-DataSynth directory. Please specify REPO_DIR in config/bash_config.env.")
+    else:
+        print(f"cot_datasynth_dir: {cot_datasynth_dir}")
 
     logger.info(f"Output directory: {output_dir}") 
     logger.info(f"CoT-DataSynth directory: {cot_datasynth_dir}")
@@ -271,7 +272,7 @@ def main():
             args.train_script,
             parallel=False,
             timeout=None,
-            eval_script_path={cot_datasynth_dir}/args.eval_script if Path(f"{cot_datasynth_dir}/{args.eval_script}").exists() else None,
+            eval_script_path=args.eval_script if Path(f"{cot_datasynth_dir}/{args.eval_script}").exists() else None,
             eval_data_path=args.eval_data_path if Path(args.eval_data_path).exists() else None
         )
 
