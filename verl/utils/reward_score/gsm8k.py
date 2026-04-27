@@ -81,9 +81,10 @@ def extract_solution(solution_str, method="strict"):
         solution_str = solution_str.replace(",", "")
         solution_str = solution_str.split('Question:')[0]           # 截断后续生成内容
         numbers = re.findall(r'\-?\d+\.\d+|\-?\d+', solution_str)
-        if not numbers:
+        if not numbers or len(numbers) == 0:
             final_answer = None
-        final_answer =  numbers[-1]
+        else:
+            final_answer =  numbers[-1]
     # elif method == 'modelscope':    # 0% bugged
     #     pattern = r'(-?[0-9.,]{2,})|(-?[0-9]+)'
     #     answer = re.findall(pattern, solution_str)
