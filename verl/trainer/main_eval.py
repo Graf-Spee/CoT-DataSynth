@@ -81,7 +81,9 @@ def main(config):
 
     # Initialize Ray
     if not ray.is_initialized():
-        ray.init(num_cpus=config.ray_init.num_cpus, object_store_memory=10**10, _memory=10**10)
+        ray.init(num_cpus=config.ray_init.num_cpus, 
+                #  object_store_memory=10**10, _memory=10**10
+                )
 
     # 获取配置中的路径和函数名，而不是加载函数对象
     reward_file_path = config.custom_reward_function.path

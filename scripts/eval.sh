@@ -295,7 +295,7 @@ else
     trainer.n_gpus_per_node=${n_gpus_per_node} \
     trainer.nnodes=1 \
     trainer.device=cuda \
-    ray_init.num_cpus=48"
+    ray_init.num_cpus=48"   # gpu_memory_utiliztion 似乎会影响总的 GPU 剩余显存占用比例？见 llm.py/line 68
 
     # 添加额外参数（如 temperature=0.0 等）
     if [ $# -gt 0 ]; then

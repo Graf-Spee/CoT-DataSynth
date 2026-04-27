@@ -66,19 +66,22 @@ def main():
         description='DataObs Pipeline: Data analysis and training workflow'
     )
     parser.add_argument('--data_path', required=True, help='Path to dataset (parquet/jsonl/json)')
-    parser.add_argument('--data_name', default='GSM8K', help='Dataset name for output subdirectory')
+    parser.add_argument('--data_name', default='MATH-CoT', help='Dataset name for output subdirectory')
     parser.add_argument('--model_id', required=True, help='Model ID for training')
     parser.add_argument('--output_dir', required=True, help='Output directory for experiment')
     parser.add_argument('--splits_dir', default=None, help='Path to existing splits directory (use with --skip_split)')
     parser.add_argument('--train_script', default='scripts/sft_dataobs.sh', help='Training script path')
     parser.add_argument('--eval_script', default='scripts/eval_dataobs.sh', help='Evaluation script path')
-    parser.add_argument('--eval_data_path', default='/data/open_datasets/GSM8K/test.parquet', 
+    parser.add_argument('--val_data_path', default=None, help='Path to val dataset (parquet)')
+    parser.add_argument('--eval_data_path', default='/data/open_datasets/MATH-500/test-processed.parquet', 
                         help='Path to eval dataset (parquet)')
     
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--gpu_ids', default='0,1,2,3,4,5,6,7', help='Available GPU IDs (comma-separated)')
     parser.add_argument('--gpus_per_split', type=int, default=1, help='GPUs per training split')
+    parser.add_argument('--num_epochs', type=int, default=2, help='Number of training epochs per split')
     parser.add_argument('--parallel', action='store_true', help='Run the pipeline with parallel training / evaluation')
+    parser.add_argument('--estimated_vram_mb', type=int, default=30000, help='Estimated GPU memory cost in megabytes')
     
     parser.add_argument('--n_splits', type=int, default=10, help='Number of data splits')
     parser.add_argument('--similarity_type', default='jaccard',
@@ -111,6 +114,9 @@ def main():
         raise ValueError("Could not find CoT-DataSynth directory. Please specify REPO_DIR in config/bash_config.env.")
     else:
         print(f"cot_datasynth_dir: {cot_datasynth_dir}")
+
+    if args.val_data_path is None:
+        args.val_data_path = args.eval_data_path
 
     logger.info(f"Output directory: {output_dir}") 
     logger.info(f"CoT-DataSynth directory: {cot_datasynth_dir}")
@@ -236,7 +242,9 @@ def main():
 
         # Setup GPU allocation
         gpu_ids = [int(g) for g in args.gpu_ids.split(',')]
-        allocator = GPUAllocator(gpu_ids, args.gpus_per_split)
+        if not args.parallel:
+            allocator = GPUAllocator(gpu_ids, args.gpus_per_split)
+            gpu_allocations = allocator.allocate(args.n_splits)
 
         # 如果有 --splits_dir，自动检测 splits 数量
         if args.splits_dir:
@@ -250,7 +258,7 @@ def main():
         else:
             splits_dir = output_dir / "splits"
 
-        gpu_allocations = allocator.allocate(args.n_splits)
+        
 
         # Setup training pipeline
         if args.parallel:
@@ -261,25 +269,48 @@ def main():
         # Prepare training configs
         base_config = {}
 
-        configs = training_pipeline.prepare_training_configs(
-            str(splits_dir),
-            gpu_allocations,
-            base_config,
-            args.n_splits,
-            args.model_id
-        )
+        if args.parallel:
+            configs = training_pipeline.prepare_training_configs(
+                str(splits_dir),
+                base_config,
+                args.n_splits,
+                args.model_id,
+                args.estimated_vram_mb
+            )
+        else:
+            configs = training_pipeline.prepare_training_configs(
+                str(splits_dir),
+                gpu_allocations,
+                base_config,
+                args.n_splits,
+                args.model_id
+            )
 
         # Run trainings
         logger.info(f"Running {len(configs)} trainings...")
 
-        results = training_pipeline.run_all_trainings(
-            configs,
-            args.train_script,
-            parallel=False,
-            timeout=None,
-            eval_script_path=args.eval_script if Path(f"{cot_datasynth_dir}/{args.eval_script}").exists() else None,
-            eval_data_path=args.eval_data_path if Path(args.eval_data_path).exists() else None
-        )
+        if args.parallel:
+            results = training_pipeline.run_all_trainings(
+                configs,
+                args.train_script,
+                val_data_path=args.val_data_path,
+                eval_script_path=args.eval_script if Path(f"{cot_datasynth_dir}/{args.eval_script}").exists() else None,
+                eval_data_path=args.eval_data_path if Path(args.eval_data_path).exists() else None,
+                gpu_pool=gpu_ids,
+                poll_interval=300,
+                num_epochs=args.num_epochs
+            )
+        else:
+            results = training_pipeline.run_all_trainings(
+                configs,
+                args.train_script,
+                parallel=False,
+                timeout=None,
+                val_data_path=args.val_data_path,
+                eval_script_path=args.eval_script if Path(f"{cot_datasynth_dir}/{args.eval_script}").exists() else None,
+                eval_data_path=args.eval_data_path if Path(args.eval_data_path).exists() else None,
+                num_epochs=args.num_epochs
+            )
 
         logger.info(f"Training results: {results}")
 
@@ -289,10 +320,7 @@ def main():
         logger.info("Phase 3.5: Evaluation on Test Set")
         logger.info("=" * 50)
 
-        if args.parallel:
-            training_pipeline = TrainingPipelineParallel(str(output_dir), cot_datasynth_dir)
-        else:
-            training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
+        training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
         
         eval_script_full_path = Path(cot_datasynth_dir) / args.eval_script
         if not eval_script_full_path.exists():
@@ -362,10 +390,7 @@ def main():
 
         # 确保 training_pipeline 已初始化 (如果跳过了训练)
         if args.skip_training:
-            if args.parallel:
-                training_pipeline = TrainingPipelineParallel(str(output_dir), cot_datasynth_dir)
-            else:
-                training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
+            training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
 
         training_results = training_pipeline.collect_training_results(
             args.n_splits,
