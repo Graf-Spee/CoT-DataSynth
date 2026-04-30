@@ -161,7 +161,7 @@ class TrainingPipelineParallel:
         skip_completed: bool = True,
         val_data_path: Optional[str] = None,
         eval_script_path: Optional[str] = None,
-        eval_data_path: Optional[str] = None,
+        eval_data_name: Optional[str] = None,
         gpu_pool: Optional[List[int]] = None,  # 可用 GPU 列表，如 [0,1,2,3]
         safety_margin_mb: int = 2048,          # 安全余量
         poll_interval: int = 5,                # 显存轮询间隔（秒）
@@ -243,7 +243,7 @@ class TrainingPipelineParallel:
                             config['gpu_ids'] = [assigned]
                             self._update_split_log(config['split_id'], "running")
                             proc = self.run_training(config, script_path,
-                                                     val_data_path if val_data_path is not None else eval_data_path,
+                                                     val_data_path,
                                                      num_epochs=num_epochs)
                             if proc:
                                 running.append((proc, config))
@@ -266,14 +266,14 @@ class TrainingPipelineParallel:
                     time.sleep(poll_interval)
 
             # ---------- 全部训练结束后，顺序执行评估 ----------
-            if eval_script_path and eval_data_path:
+            if eval_script_path and eval_data_name:
                 for config in configs:
                     sid = config['split_id']
                     if results.get(sid):
                         # eval 复用该 split 被分配过的那张卡（训练已结束，显存已释放）
                         if not config.get('gpu_ids'):
                             config['gpu_ids'] = [pool[0]]
-                        self.run_evaluation(config, eval_script_path, eval_data_path)
+                        self.run_evaluation(config, eval_script_path, eval_data_name)
 
         finally:
             nvmlShutdown()
@@ -285,7 +285,7 @@ class TrainingPipelineParallel:
         self,
         config: Dict[str, Any],
         eval_script_path: str,
-        eval_data_path: str,
+        eval_data_name: str,
     ) -> bool:
         """
         Run evaluation on a trained split
@@ -293,7 +293,6 @@ class TrainingPipelineParallel:
         Args:
             config: Training configuration
             eval_script_path: Path to evaluation script
-            eval_data_path: Path to evaluation data
 
         Returns:
             True if evaluation succeeded, False otherwise
@@ -326,7 +325,7 @@ class TrainingPipelineParallel:
             str(eval_script_path),
             str(latest_checkpoint),     # checkpoint path (param 1)
             str(base_model_id),         # base model (param 2)
-            str(eval_data_path),        # eval data path (param 3)
+            str(eval_data_name),        # dataset name (param 3)
             str(eval_output_dir),       # eval output dir (param 4)
             str(gpu_str),               # gpu_id (param 5)
         ]

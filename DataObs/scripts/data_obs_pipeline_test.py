@@ -72,9 +72,8 @@ def main():
     parser.add_argument('--splits_dir', default=None, help='Path to existing splits directory (use with --skip_split)')
     parser.add_argument('--train_script', default='scripts/sft_dataobs.sh', help='Training script path')
     parser.add_argument('--eval_script', default='scripts/eval_dataobs.sh', help='Evaluation script path')
-    parser.add_argument('--val_data_path', default=None, help='Path to val dataset (parquet)')
-    parser.add_argument('--eval_data_path', default='/data/open_datasets/MATH-500/test-processed.parquet', 
-                        help='Path to eval dataset (parquet)')
+    parser.add_argument('--val_data_path', default='/data/open_datasets/MATH-500/test-processed.parquet', help='Path to val dataset (parquet)')
+    parser.add_argument('--eval_data_name', default='MATH-500', help='Name of evaluation dataset')
     
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--gpu_ids', default='0,1,2,3,4,5,6,7', help='Available GPU IDs (comma-separated)')
@@ -114,9 +113,6 @@ def main():
         raise ValueError("Could not find CoT-DataSynth directory. Please specify REPO_DIR in config/bash_config.env.")
     else:
         print(f"cot_datasynth_dir: {cot_datasynth_dir}")
-
-    if args.val_data_path is None:
-        args.val_data_path = args.eval_data_path
 
     logger.info(f"Output directory: {output_dir}") 
     logger.info(f"CoT-DataSynth directory: {cot_datasynth_dir}")
@@ -295,7 +291,7 @@ def main():
                 args.train_script,
                 val_data_path=args.val_data_path,
                 eval_script_path=args.eval_script if Path(f"{cot_datasynth_dir}/{args.eval_script}").exists() else None,
-                eval_data_path=args.eval_data_path if Path(args.eval_data_path).exists() else None,
+                eval_data_name=args.eval_data_name,
                 gpu_pool=gpu_ids,
                 poll_interval=300,
                 num_epochs=args.num_epochs
@@ -308,7 +304,7 @@ def main():
                 timeout=None,
                 val_data_path=args.val_data_path,
                 eval_script_path=args.eval_script if Path(f"{cot_datasynth_dir}/{args.eval_script}").exists() else None,
-                eval_data_path=args.eval_data_path if Path(args.eval_data_path).exists() else None,
+                eval_data_name=args.eval_data_name,
                 num_epochs=args.num_epochs
             )
 
@@ -325,8 +321,6 @@ def main():
         eval_script_full_path = Path(cot_datasynth_dir) / args.eval_script
         if not eval_script_full_path.exists():
             logger.error(f"Evaluation script not found: {eval_script_full_path}")
-        elif not Path(args.eval_data_path).exists():
-            logger.error(f"Evaluation data not found: {args.eval_data_path}")
         else:
             # 使用 GPU 分配器分配 GPU
             gpu_ids = [int(g) for g in args.gpu_ids.split(',')]
@@ -353,7 +347,7 @@ def main():
                     training_pipeline.run_evaluation(
                         config,
                         args.eval_script,
-                        args.eval_data_path
+                        args.eval_data_name
                     )
                 else:
                     logger.warning(f"Split {split_id} output directory not found: {split_output_dir}")

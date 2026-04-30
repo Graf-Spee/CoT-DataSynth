@@ -26,11 +26,12 @@ def format_arc_prompt(row):
     # 格式化选项为字符串 (例如: "A) xxxxxx")
     options_lines = []
     for label, text in zip(choice_labels, choice_texts):
-        options_lines.append(f"{label}) {text}")
+        options_lines.append(f"({label}) {text}")
     options_text = "\n".join(options_lines)
     
     # 构建有效的选项标签列表（用于提示模型）
-    valid_labels = ", ".join(choice_labels)
+    wrapped_choice_labels = [f"({label})" for label in choice_labels]
+    valid_labels = ", ".join(wrapped_choice_labels)
     
     prompt_content = f"""Answer the following multiple choice question step by step.
 Your final answer should be exactly one of the option labels: {valid_labels}.
@@ -48,7 +49,7 @@ Please explain your reasoning, then clearly state your final answer using the op
     ]
 
 # Read Original Data
-input_path = '/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet'
+input_path = '/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet'
 df = pd.read_parquet(input_path)
 
 # 关键：创建包含 'ground_truth' 键的 reward_model 列
@@ -61,12 +62,12 @@ df['reward_model'] = df['answerKey'].apply(lambda x: {
 df['prompt'] = df.apply(format_arc_prompt, axis=1)
 
 # 创建 data_source 列用于标识数据集
-df['data_source'] = 'ai2_arc'
+df['data_source'] = 'commonsenseQA'
 
 # 保存处理后的数据（保留原始列便于调试）
 output_columns = ['prompt', 'question', 'choices', 'answerKey', 'id', 'data_source', 'reward_model']
 df[output_columns].to_parquet(
-    '/data/open_datasets/ai2_arc/ARC-Challenge/test-processed.parquet',
+    '/data/open_datasets/CommonsenseQA/data/validation-processed.parquet',
     index=False
 )
 

@@ -7,9 +7,10 @@ def format_stratQA_prompt(row):
 Your should answer the question only in \"true\" or \"false\".
 
 Term & Description: {row['term']} / {row['description']}
-Question: {row['question']}
 
 Facts: {row['facts']}
+
+Question: {row['question']}
 
 Please explain your reasoning, then clearly state your final answer (true or false)."""
 
@@ -24,7 +25,6 @@ input_path = '/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee
 df = pd.read_parquet(input_path)
 
 # 关键：创建包含 'ground_truth' 键的 reward_model 列
-# answerKey 是正确选项的标签，如 "A", "B", "C", "D"
 df['reward_model'] = df['answer'].apply(lambda x: {
     'ground_truth': x
 })
