@@ -79,7 +79,7 @@ find_latest_eval_dir() {
 # =========================== Param Parsing =============================
 if [ "$#" -lt 2 ]; then
     echo "Usage: bash $0 <dataset_name> <gpu_ids> [checkpoint_path] [other configs...]"
-    echo "Supported datasets (any case): arc-challenge, aqua_rat, gsm8k, livecodebench, math, math-500, numinamath, strategyQA, theoremQA"
+    echo "Supported datasets (any case): arc-challenge, aqua_rat, commonsenseQA, gsm8k, livecodebench, math, math-500, numinamath, strategyQA"
     echo ""
     echo "Examples:"
     echo "  # Evaluate the base model on gsm8k"
@@ -119,6 +119,17 @@ case $DATASET in
         
         echo "[INFO] Load config for AQuA-RAT: Success!"
         ;;
+    "commonsenseQA")
+        DATA_NAME="commonsenseQA"
+        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/multiple_choice.py")
+        EVAL_DATA="/data/open_datasets/CommonsenseQA/data/validation-processed.parquet"
+        
+        PROMPT_KEY="prompt"              # Question
+        DATA_SOURCE_KEY="data_source"    # Data Source
+        REWARD_MODEL_KEY="reward_model"  # Dict Containing GT (ground_truth)
+        
+        echo "[INFO] Load config for CommonsenseQA: Success!"
+        ;;
     "gsm8k")
         DATA_NAME="gsm8k"
         REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/gsm8k.py")
@@ -140,6 +151,7 @@ case $DATASET in
         REWARD_MODEL_KEY="reward_model"  # Dict Containing GT (ground_truth)
         
         echo "[INFO] Load config for LiveCodeBench: Success!"
+        exit 1
         ;;
     "math")
         DATA_NAME="math"
@@ -165,7 +177,7 @@ case $DATASET in
         ;;
     "numinamath" | "numinamath-CoT")
         DATA_NAME="numinamath"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/math.py")
+        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/math_verify.py")
         EVAL_DATA="/data/open_datasets/NuminaMath-CoT/test-processed.parquet"
 
         PROMPT_KEY="prompt"              # Question
@@ -185,21 +197,10 @@ case $DATASET in
 
         echo "[INFO] Load config for StrategyQA: Success!"
         ;;
-    "theoremQA")
-        DATA_NAME="gsm8k"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/gsm8k.py")
-        EVAL_DATA="/data/open_datasets/TheoremQA/..."
-
-        PROMPT_KEY="prompt"              # Question
-        DATA_SOURCE_KEY="data_source"    # Data Source
-        REWARD_MODEL_KEY="reward_model"  # Dict Containing GT (ground_truth)
-        
-        echo "[INFO] Load config for TheoremQA: Success!"
-        ;;
     *)
         # Default: unknown dataset
         echo "[ERROR] Unsupported dataset $DATASET."
-        echo "Supported datasets: ai2_arc, aqua_rat, gsm8k, livecodebench, math, math-500, numinamath, strategyQA, theoremQA"
+        echo "Supported datasets: ai2_arc, aqua_rat, commonsenseQA, gsm8k, livecodebench, math, math-500, numinamath, strategyQA"
         exit 1
         ;;
 esac

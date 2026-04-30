@@ -1,119 +1,78 @@
 import re
 
-def extract_boolean_answer(text: str, flexible: bool = False) -> str:
-    """
-    Extract boolean answer (True/False) from model output.
-    
-    Args:
-        text: Model output text
-        flexible: If True, search entire text if no match in last line
-    
-    Returns:
-        str: "True", "False", or "" (empty if not found)
-    """
-    if not text:
-        return ""
-    
-    # Normalize
-    text = text.strip()
-    text_upper = text.upper()
-    
-    # Direct match: entire text is just "True" or "False"
-    if text_upper == 'TRUE':
-        return "True"
-    if text_upper == 'FALSE':
-        return "False"
-    
-    # Single letter T/F
-    if len(text) == 1:
-        if text_upper == 'T':
-            return "True"
-        elif text_upper == 'F':
-            return "False"
-    
-    # Multi-line processing: prioritize last non-empty line
-    lines = text.split('\n')
-    search_lines = list(reversed([l.strip() for l in lines if l.strip()]))
-    
-    # If strict mode (not flexible), only check last line; if flexible, check all
-    lines_to_check = search_lines if flexible else (search_lines[:1] if search_lines else [])
-    
-    for line in lines_to_check:        
-        # Pattern 1: "Answer: True", "The answer is false", "Result: T", "Final Answer: F"
-        match = re.search(r'(?:answer|final answer|result|conclusion|choice|option)[:=\s]+(true|false|t|f)\b', 
-                         line, re.IGNORECASE)
-        if match:
-            ans = match.group(1).upper()
-            return "True" if ans in ['TRUE', 'T'] else "False"
-        
-        # Pattern 2: Parentheses or brackets: (True), [False], (T), [F]
-        match = re.search(r'[\(\[\{](true|false|t|f)[\)\]\}]', line, re.IGNORECASE)
-        if match:
-            ans = match.group(1).upper()
-            return "True" if ans in ['TRUE', 'T'] else "False"
-        
-        # Pattern 3: Word boundaries (standalone True/False) with optional punctuation
-        # e.g., "True.", "False!", "True" at start/end of line
-        match = re.search(r'(?:^|\s)(true|false)[\.\,\;\!\?]*(?:$|\s)', line, re.IGNORECASE)
-        if match:
-            ans = match.group(1).upper()
-            return "True" if ans == 'TRUE' else "False"
-        
-        # Pattern 4: Line starts with True/False followed by separator
-        match = re.search(r'^(true|false)[:=\s)]', line, re.IGNORECASE)
-        if match:
-            ans = match.group(1).upper()
-            return "True" if ans == 'TRUE' else "False"
-    
-    # Strict mode fallback: if no match in last line, return empty
-    if not flexible:
-        return ""
-    
-    # Flexible mode: search entire text for any occurrence (return last match)
-    # Pattern priority: explicit markers > standalone words
-    flexible_patterns = [
-        r'(?:answer|final answer|result|conclusion)[:=\s]+(true|false)',
-        r'\b(true|false)\b'
-    ]
-    
-    for pattern in flexible_patterns:
-        matches = re.findall(pattern, text_upper)
-        if matches:
-            ans = matches[-1]  # Last occurrence usually indicates final answer
-            return "True" if ans == 'TRUE' else "False"
-    
-    return ""
-
-
-# def normalize_ground_truth(ground_truth) -> str:
+# def extract_boolean_answer(text: str, flexible: bool = False) -> str:
 #     """
-#     Normalize various True/False representations to standard "True"/"False".
+#     Extract boolean answer (True/False) from model output.
+    
+#     Args:
+#         text: Model output text
+#         flexible: If True, search entire text if no match in last line
+    
+#     Returns:
+#         str: "True", "False", or "" (empty if not found)
 #     """
-#     if ground_truth is None:
+#     if not text:
 #         return ""
     
-#     gt_str = str(ground_truth).strip().upper()
+#     # Normalize
+#     text = text.strip()
+#     text_upper = text.upper()
     
-#     # Define equivalent values
-#     true_values = {'TRUE', 'T', 'YES', 'Y', '1', 'CORRECT', 'RIGHT', '对', '是'}
-#     false_values = {'FALSE', 'F', 'NO', 'N', '0', 'INCORRECT', 'WRONG', 'NONE', '错', '否'}
-    
-#     if gt_str in true_values:
+#     # Direct match: entire text is just "True" or "False"
+#     if text_upper == 'TRUE':
 #         return "True"
-#     elif gt_str in false_values:
+#     if text_upper == 'FALSE':
 #         return "False"
-#     else:
-#         # Try boolean interpretation
-#         try:
-#             # Handle cases where ground_truth might be Python boolean or integer
-#             if isinstance(ground_truth, bool):
-#                 return "True" if ground_truth else "False"
-#             if isinstance(ground_truth, int):
-#                 return "True" if ground_truth == 1 else "False"
-#             return ""
-#         except:
-#             return ""
+    
+#     # Single letter T/F
+#     if len(text) == 1:
+#         if text_upper == 'T':
+#             return "True"
+#         elif text_upper == 'F':
+#             return "False"
+    
+#     # Multi-line processing: prioritize last non-empty line
+#     lines = text.split('\n')
+#     search_lines = list(reversed([l.strip() for l in lines if l.strip()]))
+    
+#     # If strict mode (not flexible), only check last line; if flexible, check all
+#     lines_to_check = search_lines if flexible else (search_lines[:1] if search_lines else [])
+    
+#     for line in lines_to_check:        
+#         # Pattern 1: "Answer: True", "The answer is false", "Result: T", "Final Answer: F"
+#         match = re.search(r'(?:answer|final answer|result|conclusion|choice|option)[:=\s]+(true|false|t|f)\b', 
+#                          line, re.IGNORECASE)
+#         if match:
+#             ans = match.group(1).upper()
+#             return "True" if ans in ['TRUE', 'T'] else "False"
+        
+#         # Pattern 2: Parentheses or brackets: (True), [False], (T), [F]
+#         match = re.search(r'[\(\[\{](true|false|t|f)[\)\]\}]', line, re.IGNORECASE)
+#         if match:
+#             ans = match.group(1).upper()
+#             return "True" if ans in ['TRUE', 'T'] else "False"
+        
+#         # Pattern 3: Word boundaries (standalone True/False) with optional punctuation
+#         # e.g., "True.", "False!", "True" at start/end of line
+#         match = re.search(r'(?:^|\s)(true|false)[\.\,\;\!\?]*(?:$|\s)', line, re.IGNORECASE)
+#         if match:
+#             ans = match.group(1).upper()
+#             return "True" if ans == 'TRUE' else "False"
+        
+#         # Pattern 4: Line starts with True/False followed by separator
+#         match = re.search(r'^(true|false)[:=\s)]', line, re.IGNORECASE)
+#         if match:
+#             ans = match.group(1).upper()
+#             return "True" if ans == 'TRUE' else "False"
+    
+#     # fallback: if no match in last line, return empty
+#     return ""
 
+def extract_boolean_answer(text: str) -> str:
+    if not text:
+        return "N/A"
+    match = re.findall(r"(true|false)", text, re.IGNORECASE)
+    return match[-1].lower() if match else "N/A"
 
 def compute_score(solution_str, ground_truth, method="strict", format_score=0.0, score=1.0):
     """
@@ -137,17 +96,12 @@ def compute_score(solution_str, ground_truth, method="strict", format_score=0.0,
     if not solution_str or ground_truth is None:
         return 0.0
     
-    # # Normalize ground truth
-    # gt_normalized = normalize_ground_truth(ground_truth)
-    # if not gt_normalized:
-    #     return 0.0
-    
     # Extract prediction
-    pred = extract_boolean_answer(solution_str, flexible=(method == 'flexible'))
+    pred = extract_boolean_answer(solution_str)
 
-    if pred == "True":
+    if pred == "true":
         pred_bool = True
-    elif pred == "False":
+    elif pred == "false":
         pred_bool = False
     else:
         return 0.0
@@ -155,20 +109,6 @@ def compute_score(solution_str, ground_truth, method="strict", format_score=0.0,
     # Exact match
     if pred_bool == ground_truth:
         return score
-    
-    # # Partial credit: if format_score > 0 and correct answer is explicitly mentioned
-    # if format_score > 0:
-    #     text_upper = solution_str.upper()
-        
-    #     if gt_normalized == "True":
-    #         # Check for explicit mention of True after answer markers or standalone
-    #         if (re.search(r'(?:answer|final answer|result|conclusion)[:=\s]+(?:true|t)\b', text_upper) or
-    #             re.search(r'\btrue\b', text_upper)):
-    #             return format_score
-    #     else:
-    #         if (re.search(r'(?:answer|final answer|result|conclusion)[:=\s]+(?:false|f)\b', text_upper) or
-    #             re.search(r'\bfalse\b', text_upper)):
-    #             return format_score
     
     return 0.0
 

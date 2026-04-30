@@ -177,7 +177,7 @@ class TrainingPipeline:
         skip_completed: bool = True,
         val_data_path: Optional[str] = None,
         eval_script_path: Optional[str] = None,
-        eval_data_path: Optional[str] = None,
+        eval_data_name: Optional[str] = None,
         num_epochs: int = 15,
     ) -> Dict[int, bool]:
         """
@@ -190,7 +190,6 @@ class TrainingPipeline:
             timeout: Timeout per training in seconds
             skip_completed: Skip splits that already have training_results.json
             eval_script_path: Path to evaluation script (optional)
-            eval_data_path: Path to evaluation data (optional)
 
         Returns:
             Dictionary mapping split_id to success status
@@ -215,7 +214,7 @@ class TrainingPipeline:
             # Update status to running
             self._update_split_log(split_id, "running")
             success = self.run_training(config, script_path,
-                                        val_data_path if val_data_path is not None else eval_data_path,
+                                        val_data_path,
                                         num_epochs, timeout)
             results[split_id] = success
 
@@ -224,12 +223,12 @@ class TrainingPipeline:
                 self._update_split_log(split_id, "completed", "Training succeeded")
 
                 # Run evaluation if script provided
-                if eval_script_path and eval_data_path:
+                if eval_script_path and eval_data_name:
                     logger.info(f"Running evaluation for split {split_id}...")
                     eval_success = self.run_evaluation(
                         config,
                         eval_script_path,
-                        eval_data_path
+                        eval_data_name
                     )
                     if eval_success:
                         logger.info(f"Evaluation for split {split_id} succeeded")
@@ -249,7 +248,7 @@ class TrainingPipeline:
         self,
         config: Dict[str, Any],
         eval_script_path: str,
-        eval_data_path: str,
+        eval_data_name: str,
     ) -> bool:
         """
         Run evaluation on a trained split
@@ -257,7 +256,6 @@ class TrainingPipeline:
         Args:
             config: Training configuration
             eval_script_path: Path to evaluation script
-            eval_data_path: Path to evaluation data
 
         Returns:
             True if evaluation succeeded, False otherwise
@@ -290,7 +288,7 @@ class TrainingPipeline:
             str(eval_script_path),
             str(latest_checkpoint),     # checkpoint path (param 1)
             str(base_model_id),         # base model (param 2)
-            str(eval_data_path),        # eval data path (param 3)
+            str(eval_data_name),        # dataset name (param 3)
             str(eval_output_dir),       # eval output dir (param 4)
             str(gpu_str),               # gpu_id (param 5)
         ]

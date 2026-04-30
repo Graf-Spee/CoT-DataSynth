@@ -1,16 +1,16 @@
 #!/bin/bash
 # DataObs 专用评估脚本
-# 用法: bash eval_dataobs.sh <checkpoint_path> <base_model> <data_path> <output_path> <gpu_id>
+# 用法: bash eval_dataobs.sh <checkpoint_path> <base_model> <dataset_name> <output_path> <gpu_id>
 
 if [ "$#" -lt 5 ]; then
-    echo "Usage: bash $0 <checkpoint_path> <base_model> <data_path> <output_path> <gpu_id>"
+    echo "Usage: bash $0 <checkpoint_path> <base_model> <dataset_name> <output_path> <gpu_id>"
     echo "Example: bash $0 /data/hrh/COT/GSM8K/training/split_0/global_step_2 /data/pretrain_models/Qwen2.5-0.5B-Instruct /data/open_datasets/GSM8K/test.parquet /data/hrh/COT/GSM8K/eval/split_0 0"
     exit 1
 fi
 
 CHECKPOINT_PATH="$1"
 BASE_MODEL="$2"
-EVAL_DATA="$3"
+DATA_NAME="$3"
 EVAL_OUTPUT_DIR="$4"
 GPU_ID="${5:-0}"
 
@@ -36,6 +36,52 @@ fi
 PROJECT_DIR="${PROJECT_DIR:-$HOME/CoT-Data-verl}"
 STORE_DIR="${STORE_DIR:-/data/hjw}"
 # =======================================================================
+
+shopt -s nocasematch    # Enable caseless match
+case $DATA_NAME in
+    "ai2_arc" | "ai2-arc" | "arc-challenge")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/multiple_choice.py"
+        EVAL_DATA="/data/open_datasets/ai2_arc/ARC-Challenge/test-processed.parquet"
+        echo "[INFO] Load config for ARC-Challenge: Success!"
+        ;;
+    "aqua_rat" | "aqua-rat")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/multiple_choice.py"
+        EVAL_DATA="/data/open_datasets/aqua_rat/processed/test-processed.parquet"
+        echo "[INFO] Load config for AQuA-RAT: Success!"
+        ;;
+    "commonsenseQA")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/multiple_choice.py"
+        EVAL_DATA="/data/open_datasets/CommonsenseQA/data/validation-processed.parquet"
+        echo "[INFO] Load config for CommonsenseQA: Success!"
+        ;;
+    "gsm8k")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/gsm8k.py"
+        EVAL_DATA="/data/open_datasets/GSM8K/test.parquet"
+        echo "[INFO] Load config for GSM8K: Success!"
+        ;;
+    "math" | "math-500" | "math-cot")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/math_verify.py"
+        EVAL_DATA="/data/open_datasets/MATH-500/test-processed.parquet"
+        echo "[INFO] Load config for MATH: Success!"
+        ;;
+    "numinamath" | "numinamath-CoT")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/math_verify.py"
+        EVAL_DATA="/data/open_datasets/NuminaMath-CoT/test-processed.parquet"
+        echo "[INFO] Load config for NuminaMath-CoT: Success!"
+        ;;
+    "strategyQA")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/truefalse.py"
+        EVAL_DATA="/data/open_datasets/StrategyQA/data/test-processed.parquet"
+        echo "[INFO] Load config for StrategyQA: Success!"
+        ;;
+    *)
+        # Default: unknown dataset
+        echo "[ERROR] Unsupported dataset $DATA_NAME."
+        echo "Supported datasets: ai2_arc, aqua_rat, commonsenseQA, gsm8k, livecodebench, math, math-500, numinamath, strategyQA"
+        exit 1
+        ;;
+esac
+shopt -u nocasematch    # Disable caseless match
 
 # 配置
 export CUDA_VISIBLE_DEVICES=$GPU_ID
@@ -135,7 +181,6 @@ echo "[INFO] Generation Done!"
 
 # Stage 2: Evaluation
 EVALUATION_OUTPUT="${EVAL_OUTPUT_DIR}/generated/responses_labeled.json"
-REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/gsm8k.py"
 
 echo ""
 echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"

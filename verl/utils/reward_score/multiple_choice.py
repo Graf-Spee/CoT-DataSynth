@@ -1,49 +1,61 @@
 import re
 
 
-# 模式1: "Answer: C", "The answer is C", "Option: C"
-# 模式2: "(C)" 或 "C)" 或 "(C"
-# 模式3: "C.", "C!", "C?" 或行首/行尾的单独字母
-# 模式4: 行内明确标记的最终答案（如 "Final answer: C"）
 patterns = [
-    r'(?:answer|option)[:=\s]+([A-E])',
-    r'\(?([A-E])\)?',
+    # "Answer: C", "Option = C", "The answer is C", "Option is C"
+    r'(?:answer|option)(?:[:=\s]+|\s+is\s+)([A-E])\b',
+    
+    # "(C)" —— 严格匹配成对括号
+    r'\(([A-E])\)',
+    
+    # "C.", "C)", 行首/行尾的单独字母
     r'(?:^|\s)([A-E])(?:\)|\.|$)',
-    r'final answer[:=\s]+([A-E])'
+    
+    # "Final answer: C"
+    r'final answer[:=\s]+([A-E])\b'
 ]
 
-def extract_option_letter(text: str, valid_options: str = 'ABCDE') -> str:
-    """Extract option letter (A-E) from model output."""
-    if not text:
-        return ""
+# def extract_option_letter(text: str, valid_options: str = 'ABCDE') -> str:
+#     """Extract option letter (A-E) from model output."""
+#     if not text:
+#         return ""
     
-    text = text.strip().upper()
+#     text = text.strip().upper()
     
-    # 直接匹配单个字母
-    if len(text) == 1 and text in valid_options:
-        return text
+#     # 直接匹配单个字母
+#     if len(text) == 1 and text in valid_options:
+#         return text
     
-    # 多行取最后一行
-    lines = text.split('\n')
+#     # 多行取最后一行
+#     lines = text.split('\n')
 
-    for line in reversed(lines):
-        line = line.strip()
-        if not line:
-            continue
+#     for line in reversed(lines):
+#         line = line.strip()
+#         if not line:
+#             continue
             
-        line = line.upper()
+#         line = line.upper()
 
-        for pattern in patterns:
-            match = re.search(pattern, line, re.IGNORECASE)
-            if match:
-                candidate = match.group(1).upper()
-                if candidate in valid_options:
-                    return candidate
+#         for pattern in patterns:
+#             match = re.search(pattern, line, re.IGNORECASE)
+#             if match:
+#                 candidate = match.group(1).upper()
+#                 if candidate in valid_options:
+#                     return candidate
             
-        if line:
-            break
+#         break
         
-    return ""
+#     return ""
+
+def extract_option_letter(text: str, valid_options: str = 'ABCDE') -> str:
+    if not text:
+        return "N/A"
+    match = re.findall(r"answer is \((A|B|C|D|E|F)\)", text)
+    if match:
+        return match[-1] if match[-1] in valid_options else "N/A"
+    else:
+        match = re.findall(r"\((A|B|C|D|E|F)\)", text)
+        return match[-1] if match and match[-1] in valid_options else "N/A"
 
 def extract_flexible(text: str, valid_options: str = 'ABCDE'):
     if not text:

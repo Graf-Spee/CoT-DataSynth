@@ -7,17 +7,18 @@ def format_aqua_prompt(row):
     options = row['options']  # 列表: ["A)21", "B)21.5", ...]
     
     # 格式化选项为字符串
+    options = [f"({op}" for op in options]
     options_text = "\n".join(options)
     
     prompt_content = f"""Solve the following multiple choice question step by step.
-Your final answer should be one of the options A, B, C, D, or E.
+Your final answer should be one of the options (A), (B), (C), (D), or (E).
 
 Question: {question}
 
 Options:
 {options_text}
 
-Please explain your reasoning, then clearly state your final answer (A, B, C, D, or E)."""
+Please explain your reasoning, then clearly state your final answer ((A), (B), (C), (D), or (E))."""
 
     return [
         {"role": "system", "content": "You are a helpful assistant."},

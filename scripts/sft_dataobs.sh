@@ -72,13 +72,13 @@ data.train_files=${DATA_DIR} \
 data.val_files=${VAL_DATA_DIR} \
 data.prompt_key=question \
 data.response_key=answer \
-data.micro_batch_size_per_gpu=1 \
+data.micro_batch_size_per_gpu=8 \
 data.max_length=16384 \
 data.train_batch_size=256 \
 optim.lr=5e-6 \
 model.partial_pretrain=${MODEL_ID} \
 model.trust_remote_code=true \
-model.enable_gradient_checkpointing=true \
+model.enable_gradient_checkpointing=false \
 model.use_liger=true \
 model.fsdp_config.model_dtype=bf16 \
 trainer.default_local_dir=${SAVE_PATH} \
@@ -103,9 +103,9 @@ use_remove_padding=true "
 # data.prompt_dict_keys=['content'] \
 # +data.response_dict_keys=['content'] "
 
-# SFT_ARGS="${SFT_ARGS} \
-# model.lora_rank=8 \
-# model.lora_alpha=16 "
+SFT_ARGS="${SFT_ARGS} \
+model.lora_rank=8 \
+model.lora_alpha=16 "
 
 torchrun --standalone --nnodes=1 --nproc_per_node=$nproc_per_node \
      -m verl.trainer.fsdp_sft_trainer \
