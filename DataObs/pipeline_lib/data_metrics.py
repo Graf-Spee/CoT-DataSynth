@@ -10,6 +10,43 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
+def _extract_prompt_text(item: Dict[str, Any]) -> str:
+    """Extract prompt text from heterogeneous dataset schemas."""
+    prompt = item.get('prompt', None)
+    if prompt is not None:
+        if isinstance(prompt, list):
+            return ' '.join(str(p.get('content', '')) for p in prompt).strip()
+        return str(prompt).strip()
+
+    # Fallback schemas (e.g. MATH question-answer parquet)
+    for key in ('question', 'query', 'instruction', 'input'):
+        value = item.get(key, None)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return ''
+
+
+def _extract_answer_text(item: Dict[str, Any]) -> str:
+    """Extract answer text from heterogeneous dataset schemas."""
+    extra_info = item.get('extra_info', {})
+    if isinstance(extra_info, dict):
+        answer = extra_info.get('answer', None)
+        if answer is not None and str(answer).strip():
+            return str(answer).strip()
+
+    for key in ('answer', 'output', 'response', 'solution'):
+        value = item.get(key, None)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+
+    reward_model = item.get('reward_model', {})
+    if isinstance(reward_model, dict):
+        ground_truth = reward_model.get('ground_truth', None)
+        if ground_truth is not None and str(ground_truth).strip():
+            return str(ground_truth).strip()
+    return ''
+
+
 def compute_data_statistics(data: List[Dict]) -> Dict[str, float]:
     """
     Compute basic statistical metrics for a dataset
@@ -29,14 +66,9 @@ def compute_data_statistics(data: List[Dict]) -> Dict[str, float]:
     # Compute prompt length statistics
     prompt_lengths = []
     for item in data:
-        if 'prompt' in item:
-            prompt = item['prompt']
-            if isinstance(prompt, list):
-                # Assume list of dicts with 'content' field
-                content_length = sum(len(str(p.get('content', ''))) for p in prompt)
-            else:
-                content_length = len(str(prompt))
-            prompt_lengths.append(content_length)
+        prompt_text = _extract_prompt_text(item)
+        if prompt_text:
+            prompt_lengths.append(len(prompt_text))
 
     if prompt_lengths:
         metrics['avg_prompt_length'] = float(np.mean(prompt_lengths))
@@ -47,8 +79,9 @@ def compute_data_statistics(data: List[Dict]) -> Dict[str, float]:
     # Compute response length statistics (if available)
     response_lengths = []
     for item in data:
-        if 'extra_info' in item and 'answer' in item['extra_info']:
-            response_lengths.append(len(str(item['extra_info']['answer'])))
+        answer_text = _extract_answer_text(item)
+        if answer_text:
+            response_lengths.append(len(answer_text))
 
     if response_lengths:
         metrics['avg_response_length'] = float(np.mean(response_lengths))
@@ -92,19 +125,17 @@ def compute_data_quality_metrics(data: List[Dict]) -> Dict[str, float]:
     # Check answer coverage
     has_answer = 0
     for item in data:
-        if 'extra_info' in item and 'answer' in item['extra_info']:
-            answer = item['extra_info']['answer']
-            if answer and str(answer).strip():
-                has_answer += 1
+        if _extract_answer_text(item):
+            has_answer += 1
 
     metrics['answer_coverage'] = float(has_answer / len(data)) if data else 0.0
 
     # Check format validity
     valid_format = 0
     for item in data:
-        has_prompt = 'prompt' in item and item['prompt']
-        has_reward_model = 'reward_model' in item and item['reward_model']
-        if has_prompt and has_reward_model:
+        has_prompt = bool(_extract_prompt_text(item))
+        has_target = bool(_extract_answer_text(item))
+        if has_prompt and has_target:
             valid_format += 1
 
     metrics['format_validity'] = float(valid_format / len(data)) if data else 0.0
@@ -112,9 +143,9 @@ def compute_data_quality_metrics(data: List[Dict]) -> Dict[str, float]:
     # Compute text diversity (simple: unique samples / total samples)
     unique_prompts = set()
     for item in data:
-        if 'prompt' in item:
-            prompt_str = str(item['prompt'])
-            unique_prompts.add(prompt_str)
+        prompt_text = _extract_prompt_text(item)
+        if prompt_text:
+            unique_prompts.add(prompt_text)
 
     metrics['prompt_uniqueness'] = float(len(unique_prompts) / len(data)) if data else 0.0
 

@@ -52,7 +52,10 @@ def compute_metrics(
     metrics: Optional[List[str]] = None,
     model: Optional[str] = None,
     similarity_type: str = "jaccard",
-    compute_on: str = "prompt"
+    compute_on: str = "prompt",
+    ppl_ifd_sample_ratio: float = 0.01,
+    ppl_ifd_max_samples: Optional[int] = None,
+    ppl_ifd_sample_seed: int = 42,
 ):
     """Compute metrics for existing splits
 
@@ -127,7 +130,13 @@ def compute_metrics(
                     if model is None:
                         logger.warning(f"Metric '{metric_name}' requires --model, skipping")
                         continue
-                    result = func(data, model_name=model)
+                    result = func(
+                        data,
+                        model_name=model,
+                        sample_ratio=ppl_ifd_sample_ratio,
+                        max_samples=ppl_ifd_max_samples,
+                        random_seed=ppl_ifd_sample_seed,
+                    )
                 else:
                     result = func(data)
 
@@ -169,6 +178,12 @@ def main():
     parser.add_argument('--compute_on', type=str, default='both',
                         choices=['prompt', 'answer', 'both'],
                         help='What to compute diversity on (default: prompt)')
+    parser.add_argument('--ppl_ifd_sample_ratio', type=float, default=0.01,
+                        help='Sampling ratio for PPL/IFD (default: 0.01). Use 1.0 for full.')
+    parser.add_argument('--ppl_ifd_max_samples', type=int, default=None,
+                        help='Optional hard cap for PPL/IFD sample size (overrides ratio)')
+    parser.add_argument('--ppl_ifd_sample_seed', type=int, default=42,
+                        help='Random seed for PPL/IFD sampling')
 
     args = parser.parse_args()
 
@@ -188,7 +203,10 @@ def main():
         args.metrics,
         args.model,
         args.similarity_type,
-        args.compute_on
+        args.compute_on,
+        args.ppl_ifd_sample_ratio,
+        args.ppl_ifd_max_samples,
+        args.ppl_ifd_sample_seed,
     )
 
 

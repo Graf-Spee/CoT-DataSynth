@@ -4,12 +4,29 @@ Computes correlations and generates visualizations
 """
 
 import logging
+import re
 from typing import Dict, Tuple, Optional
 import numpy as np
 import pandas as pd
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+MIN_MAX_METRIC_PATTERN = re.compile(r"(^|_)(min|max)($|_)")
+
+
+def _is_min_max_metric(metric_name: str) -> bool:
+    """Return True when a metric is min/max style aggregate."""
+    return bool(MIN_MAX_METRIC_PATTERN.search(metric_name.lower()))
+
+
+def _pair_contains_min_max(pair: str) -> bool:
+    """Return True when either side of '<data> vs <result>' is a min/max metric."""
+    parts = [p.strip() for p in pair.split(" vs ")]
+    if len(parts) != 2:
+        return False
+    return _is_min_max_metric(parts[0]) or _is_min_max_metric(parts[1])
 
 
 class CorrelationAnalyzer:
@@ -182,7 +199,8 @@ class CorrelationAnalyzer:
         self,
         correlations_df: pd.DataFrame,
         threshold: float = 0.6,
-        output_file: Optional[str] = None
+        output_file: Optional[str] = None,
+        exclude_min_max: bool = True
     ) -> pd.DataFrame:
         """
         Get summary of strong correlations (|corr| >= threshold)
@@ -191,12 +209,15 @@ class CorrelationAnalyzer:
             correlations_df: DataFrame with correlations
             threshold: Correlation threshold (default: 0.6)
             output_file: Output file path (optional)
+            exclude_min_max: Whether to remove min/max metric pairs
 
         Returns:
             DataFrame with strong correlations
         """
         # 过滤相关性大于阈值的对
         strong = correlations_df[correlations_df['correlation'].abs() >= threshold].copy()
+        if exclude_min_max and 'pair' in strong.columns:
+            strong = strong[~strong['pair'].astype(str).apply(_pair_contains_min_max)]
         strong = strong.sort_values('correlation', key=abs, ascending=False)
 
         logger.info(f"Found {len(strong)} strong correlations (|corr| >= {threshold})")
@@ -250,7 +271,13 @@ class AnalysisVisualizer:
 
         # Compute correlation matrix - only numeric columns
         combined_df = pd.concat([data_metrics_df, training_results_df], axis=1)
-        numeric_cols = combined_df.select_dtypes(include=['number']).columns
+        numeric_cols = [
+            c for c in combined_df.select_dtypes(include=['number']).columns
+            if not _is_min_max_metric(c)
+        ]
+        if not numeric_cols:
+            logger.warning("No numeric columns left after min/max filtering, skipping heatmaps")
+            return
         corr_matrix = combined_df[numeric_cols].corr()
 
         # 分组绘制：按 metric 类型分组
@@ -258,10 +285,8 @@ class AnalysisVisualizer:
             'length': [c for c in numeric_cols if 'length' in c.lower()],
             'diversity': [c for c in numeric_cols if 'diversity' in c.lower() or 'similarity' in c.lower()],
             'entropy': [c for c in numeric_cols if 'entropy' in c.lower()],
-            'ppl': [c for c in numeric_cols if 'ppl' in c.lower()],
-            'ifd': [c for c in numeric_cols if 'ifd' in c.lower()],
+            'ppl_ifd': [c for c in numeric_cols if 'ppl' in c.lower() or 'ifd' in c.lower()],
             'quality': [c for c in numeric_cols if 'coverage' in c.lower() or 'validity' in c.lower() or 'uniqueness' in c.lower()],
-            'training': [c for c in numeric_cols if 'loss' in c.lower() or 'accuracy' in c.lower()],
         }
 
         # 过滤空组
@@ -273,8 +298,11 @@ class AnalysisVisualizer:
                 continue
 
             # 获取这些列与训练结果的相关性
-            training_cols = training_results_df.select_dtypes(include=['number']).columns.tolist()
-            plot_cols = list(cols) + training_cols
+            training_cols = [
+                c for c in training_results_df.select_dtypes(include=['number']).columns.tolist()
+                if not _is_min_max_metric(c)
+            ]
+            plot_cols = list(dict.fromkeys(list(cols) + training_cols))
             plot_cols = [c for c in plot_cols if c in corr_matrix.columns]
 
             if len(plot_cols) < 2:
