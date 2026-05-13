@@ -8,8 +8,45 @@ from dataclasses import dataclass
 import numpy as np
 from collections import Counter
 import math
+import random
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_prompt_text(item: Dict[str, Any]) -> str:
+    """Extract prompt/question text from heterogeneous dataset schemas."""
+    prompt = item.get('prompt', None)
+    if prompt is not None:
+        if isinstance(prompt, list):
+            return ' '.join(str(p.get('content', '')) for p in prompt).strip()
+        return str(prompt).strip()
+
+    for key in ('question', 'query', 'instruction', 'input'):
+        value = item.get(key, None)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return ''
+
+
+def _extract_answer_text(item: Dict[str, Any]) -> str:
+    """Extract answer/target text from heterogeneous dataset schemas."""
+    extra_info = item.get('extra_info', {})
+    if isinstance(extra_info, dict):
+        answer = extra_info.get('answer', None)
+        if answer is not None and str(answer).strip():
+            return str(answer).strip()
+
+    for key in ('answer', 'output', 'response', 'solution'):
+        value = item.get(key, None)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+
+    reward_model = item.get('reward_model', {})
+    if isinstance(reward_model, dict):
+        ground_truth = reward_model.get('ground_truth', None)
+        if ground_truth is not None and str(ground_truth).strip():
+            return str(ground_truth).strip()
+    return ''
 
 
 # ============================================================================
@@ -359,36 +396,43 @@ def compute_diversity_with_similarity(
     if config is None:
         config = DiversityConfig()
 
+    sim_type = config.similarity_type.value
+    prefix = f"{sim_type}_"
     if not data:
-        return {'diversity_score': 0.0, 'avg_similarity': 0.0}
+        return {
+            f'{prefix}diversity_score': 0.0,
+            f'{prefix}avg_similarity': 0.0,
+            f'{prefix}min_similarity': 0.0,
+            f'{prefix}max_similarity': 0.0,
+            f'{prefix}std_similarity': 0.0,
+            'diversity_similarity_type': sim_type,
+        }
 
     # 提取文本
     texts = []
     for item in data:
+        prompt_text = _extract_prompt_text(item)
+        answer_text = _extract_answer_text(item)
+
         if config.compute_on == "prompt":
-            prompt = item.get('prompt', '')
-            if isinstance(prompt, list):
-                text = ' '.join(str(p.get('content', '')) for p in prompt)
-            else:
-                text = str(prompt)
+            text = prompt_text
         elif config.compute_on == "answer":
-            answer = item.get('extra_info', {}).get('answer', '')
-            text = str(answer) if answer else ''
+            text = answer_text
         else:  # both: prompt + answer
-            prompt = item.get('prompt', '')
-            if isinstance(prompt, list):
-                prompt_text = ' '.join(str(p.get('content', '')) for p in prompt)
-            else:
-                prompt_text = str(prompt)
-            answer = item.get('extra_info', {}).get('answer', '')
-            answer_text = str(answer) if answer else ''
-            text = prompt_text + " " + answer_text
+            text = f"{prompt_text} {answer_text}".strip()
 
         if text.strip():
             texts.append(text)
 
     if len(texts) < 2:
-        return {'diversity_score': 0.0, 'avg_similarity': 0.0}
+        return {
+            f'{prefix}diversity_score': 0.0,
+            f'{prefix}avg_similarity': 0.0,
+            f'{prefix}min_similarity': 0.0,
+            f'{prefix}max_similarity': 0.0,
+            f'{prefix}std_similarity': 0.0,
+            'diversity_similarity_type': sim_type,
+        }
 
     # 采样
     if config.sample_size and len(texts) > config.sample_size:
@@ -411,14 +455,17 @@ def compute_diversity_with_similarity(
     upper_tri = similarity_matrix[np.triu_indices_from(similarity_matrix, k=1)]
 
     if len(upper_tri) == 0:
-        return {'diversity_score': 0.0, 'avg_similarity': 0.0}
+        return {
+            f'{prefix}diversity_score': 0.0,
+            f'{prefix}avg_similarity': 0.0,
+            f'{prefix}min_similarity': 0.0,
+            f'{prefix}max_similarity': 0.0,
+            f'{prefix}std_similarity': 0.0,
+            'diversity_similarity_type': sim_type,
+        }
 
     avg_similarity = float(np.mean(upper_tri))
     diversity_score = 1 - avg_similarity
-
-    # 键名加上 similarity_type 前缀以区分不同相似度函数
-    sim_type = config.similarity_type.value
-    prefix = f"{sim_type}_"
 
     metrics = {
         f'{prefix}diversity_score': diversity_score,
@@ -612,13 +659,8 @@ def compute_dataset_entropy(data: List[Dict]) -> Dict[str, float]:
     word_entropies = []
 
     for item in data:
-        if 'prompt' in item:
-            prompt = item['prompt']
-            if isinstance(prompt, list):
-                prompt_text = ' '.join(str(p.get('content', '')) for p in prompt)
-            else:
-                prompt_text = str(prompt)
-
+        prompt_text = _extract_prompt_text(item)
+        if prompt_text:
             char_entropies.append(compute_text_entropy(prompt_text))
             word_entropies.append(compute_word_entropy(prompt_text))
 
@@ -949,7 +991,9 @@ def compute_ppl_metrics(
     data: List[Dict],
     model_name: str = "gpt2",
     device: str = "cuda",
-    max_samples: int = None
+    max_samples: int = None,
+    sample_ratio: float = 0.01,
+    random_seed: int = 42,
 ) -> Dict[str, float]:
     """
     Compute perplexity metrics for dataset answers.
@@ -962,7 +1006,9 @@ def compute_ppl_metrics(
         data: List of data samples
         model_name: HuggingFace model name or path
         device: Device to run on
-        max_samples: Maximum samples to compute (for speed)
+        max_samples: Maximum samples to compute (for speed, highest priority)
+        sample_ratio: Ratio of valid answers to sample for PPL (default: 0.01)
+        random_seed: Random seed used for sampling
 
     Returns:
         Dictionary with PPL metrics
@@ -974,27 +1020,41 @@ def compute_ppl_metrics(
         logger.warning("transformers/torch not available, skipping PPL computation")
         return {'avg_ppl': 0.0, 'std_ppl': 0.0, 'min_ppl': 0.0, 'max_ppl': 0.0}
 
-    # Limit samples for speed
-    if max_samples and len(data) > max_samples:
-        import random
-        data = random.sample(data, max_samples)
+    # tqdm is optional; fallback to logger progress if unavailable.
+    try:
+        from tqdm.auto import tqdm
+    except ImportError:
+        tqdm = None
 
     # Extract answers
     answers = []
     for item in data:
-        answer = None
-        # Try different fields
-        if 'extra_info' in item and 'answer' in item['extra_info']:
-            answer = str(item['extra_info']['answer'])
-        elif 'answer' in item:
-            answer = str(item['answer'])
-
-        if answer and answer.strip():
+        answer = _extract_answer_text(item)
+        if answer:
             answers.append(answer)
 
     if not answers:
         logger.warning("No answers found in data for PPL computation")
         return {'avg_ppl': 0.0, 'std_ppl': 0.0, 'min_ppl': 0.0, 'max_ppl': 0.0}
+
+    # Sampling strategy:
+    # 1) max_samples has highest priority
+    # 2) otherwise use sample_ratio when 0 < sample_ratio < 1
+    total_valid = len(answers)
+    target_n = total_valid
+    if max_samples is not None and max_samples > 0:
+        target_n = min(total_valid, max_samples)
+    elif sample_ratio is not None and 0 < sample_ratio < 1:
+        target_n = max(1, int(round(total_valid * sample_ratio)))
+
+    if target_n < total_valid:
+        answers = random.Random(random_seed).sample(answers, target_n)
+        logger.info(
+            f"PPL sampling enabled: {target_n}/{total_valid} "
+            f"({target_n / total_valid:.2%})"
+        )
+    else:
+        logger.info(f"PPL using full valid answers: {total_valid}")
 
     # Load model
     logger.info(f"Loading model: {model_name}")
@@ -1008,16 +1068,36 @@ def compute_ppl_metrics(
 
     # Compute PPL for each answer
     ppls = []
-    for i, answer in enumerate(answers):
-        if i % 100 == 0:
-            logger.info(f"Computing PPL for sample {i}/{len(answers)}")
-        try:
-            ppl = compute_ppl_for_text(answer, model, tokenizer, device)
-            if not np.isnan(ppl) and not np.isinf(ppl):
-                ppls.append(ppl)
-        except Exception as e:
-            logger.warning(f"Failed to compute PPL for sample {i}: {e}")
-            continue
+    failed = 0
+    if tqdm is not None:
+        with tqdm(total=len(answers), desc='PPL', unit='sample', dynamic_ncols=True) as pbar:
+            for i, answer in enumerate(answers):
+                try:
+                    ppl = compute_ppl_for_text(answer, model, tokenizer, device)
+                    if not np.isnan(ppl) and not np.isinf(ppl):
+                        ppls.append(ppl)
+                    else:
+                        failed += 1
+                except Exception as e:
+                    failed += 1
+                    logger.warning(f"Failed to compute PPL for sample {i}: {e}")
+                pbar.update(1)
+                if (i + 1) % 20 == 0:
+                    pbar.set_postfix(valid=len(ppls), failed=failed)
+    else:
+        for i, answer in enumerate(answers):
+            if i % 100 == 0:
+                logger.info(f"Computing PPL for sample {i}/{len(answers)}")
+            try:
+                ppl = compute_ppl_for_text(answer, model, tokenizer, device)
+                if not np.isnan(ppl) and not np.isinf(ppl):
+                    ppls.append(ppl)
+                else:
+                    failed += 1
+            except Exception as e:
+                failed += 1
+                logger.warning(f"Failed to compute PPL for sample {i}: {e}")
+                continue
 
     # Clean up
     del model
@@ -1096,7 +1176,9 @@ def compute_ifd_metrics(
     data: List[Dict],
     model_name: str = "gpt2",
     device: str = "cuda",
-    max_samples: int = None
+    max_samples: int = None,
+    sample_ratio: float = 0.01,
+    random_seed: int = 42,
 ) -> Dict[str, float]:
     """
     Compute IFD (Instruction Following Difficulty) metrics for dataset.
@@ -1110,7 +1192,9 @@ def compute_ifd_metrics(
         data: List of data samples
         model_name: HuggingFace model name or path
         device: Device to run on
-        max_samples: Maximum samples to compute
+        max_samples: Maximum samples to compute (highest priority)
+        sample_ratio: Ratio of valid prompt-answer pairs to sample for IFD (default: 0.01)
+        random_seed: Random seed used for sampling
 
     Returns:
         Dictionary with IFD metrics
@@ -1122,10 +1206,11 @@ def compute_ifd_metrics(
         logger.warning("transformers/torch not available, skipping IFD computation")
         return {'avg_ifd': 0.0, 'std_ifd': 0.0, 'min_ifd': 0.0, 'max_ifd': 0.0}
 
-    # Limit samples for speed
-    if max_samples and len(data) > max_samples:
-        import random
-        data = random.sample(data, max_samples)
+    # tqdm is optional; fallback to logger progress if unavailable.
+    try:
+        from tqdm.auto import tqdm
+    except ImportError:
+        tqdm = None
 
     # Extract prompt-answer pairs
     pairs = []
@@ -1134,19 +1219,10 @@ def compute_ifd_metrics(
         answer = None
 
         # Get prompt
-        if 'prompt' in item:
-            if isinstance(item['prompt'], list):
-                prompt = ' '.join(str(p.get('content', '')) for p in item['prompt'])
-            else:
-                prompt = str(item['prompt'])
+        prompt = _extract_prompt_text(item)
 
         # Get answer (try different fields)
-        if 'extra_info' in item and 'answer' in item['extra_info']:
-            answer = str(item['extra_info']['answer'])
-        elif 'answer' in item:
-            answer = str(item['answer'])
-        elif 'reward_model' in item and 'ground_truth' in item['reward_model']:
-            answer = str(item['reward_model']['ground_truth'])
+        answer = _extract_answer_text(item)
 
         if prompt and answer and prompt.strip() and answer.strip():
             pairs.append((prompt, answer))
@@ -1154,6 +1230,25 @@ def compute_ifd_metrics(
     if not pairs:
         logger.warning("No valid prompt-answer pairs found for IFD computation")
         return {'avg_ifd': 0.0, 'std_ifd': 0.0, 'min_ifd': 0.0, 'max_ifd': 0.0}
+
+    # Sampling strategy:
+    # 1) max_samples has highest priority
+    # 2) otherwise use sample_ratio when 0 < sample_ratio < 1
+    total_valid = len(pairs)
+    target_n = total_valid
+    if max_samples is not None and max_samples > 0:
+        target_n = min(total_valid, max_samples)
+    elif sample_ratio is not None and 0 < sample_ratio < 1:
+        target_n = max(1, int(round(total_valid * sample_ratio)))
+
+    if target_n < total_valid:
+        pairs = random.Random(random_seed).sample(pairs, target_n)
+        logger.info(
+            f"IFD sampling enabled: {target_n}/{total_valid} "
+            f"({target_n / total_valid:.2%})"
+        )
+    else:
+        logger.info(f"IFD using full valid pairs: {total_valid}")
 
     # Load model
     logger.info(f"Loading model for IFD: {model_name}")
@@ -1167,16 +1262,36 @@ def compute_ifd_metrics(
 
     # Compute IFD for each pair
     ifds = []
-    for i, (prompt, answer) in enumerate(pairs):
-        if i % 100 == 0:
-            logger.info(f"Computing IFD for sample {i}/{len(pairs)}")
-        try:
-            ifd = compute_ifd_for_sample(prompt, answer, model, tokenizer, device)
-            if not np.isnan(ifd) and not np.isinf(ifd) and ifd > 0:
-                ifds.append(ifd)
-        except Exception as e:
-            logger.warning(f"Failed to compute IFD for sample {i}: {e}")
-            continue
+    failed = 0
+    if tqdm is not None:
+        with tqdm(total=len(pairs), desc='IFD', unit='sample', dynamic_ncols=True) as pbar:
+            for i, (prompt, answer) in enumerate(pairs):
+                try:
+                    ifd = compute_ifd_for_sample(prompt, answer, model, tokenizer, device)
+                    if not np.isnan(ifd) and not np.isinf(ifd) and ifd > 0:
+                        ifds.append(ifd)
+                    else:
+                        failed += 1
+                except Exception as e:
+                    failed += 1
+                    logger.warning(f"Failed to compute IFD for sample {i}: {e}")
+                pbar.update(1)
+                if (i + 1) % 20 == 0:
+                    pbar.set_postfix(valid=len(ifds), failed=failed)
+    else:
+        for i, (prompt, answer) in enumerate(pairs):
+            if i % 100 == 0:
+                logger.info(f"Computing IFD for sample {i}/{len(pairs)}")
+            try:
+                ifd = compute_ifd_for_sample(prompt, answer, model, tokenizer, device)
+                if not np.isnan(ifd) and not np.isinf(ifd) and ifd > 0:
+                    ifds.append(ifd)
+                else:
+                    failed += 1
+            except Exception as e:
+                failed += 1
+                logger.warning(f"Failed to compute IFD for sample {i}: {e}")
+                continue
 
     # Clean up
     del model

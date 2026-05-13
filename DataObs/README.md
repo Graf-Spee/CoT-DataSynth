@@ -39,20 +39,36 @@ python scripts/data_obs_pipeline.py \
 | `--skip_training` | 否 | 跳过训练 |
 | `--skip_analysis` | 否 | 跳过分析 |
 | `--do_evaluation` | 否 | 运行单独评测 |
-| `--only_analysis` | 否 | 只运行评测，跳过所有其他阶段 |
+| `--only_evaluation` | 否 | 只运行评测，跳过所有其他阶段 |
 
 ### 输出目录结构
 
 ```
 <output_dir>/<data_name>/
-├── splits/              # 分割数据 (split_0.jsonl, ...)
+├── splits/              # 分割数据 (split_0.parquet, ...)
 ├── metrics/            # 分割指标 (split_0_metrics.json, ...)
 ├── data_metrics_summary.csv  # 指标汇总
-└── [training/]        # 训练结果 (如 run_training)
-└── [results/]        # 分析结果 (如 run_analysis)
+├── training/          # 训练结果 (split_*/training_results.json 等)
+├── training_results.csv
+└── observation/       # 相关性和可视化结果
+   ├── correlations.csv
+   ├── strong_correlations_0.6.csv
+   ├── strong_correlations_0.4.csv
+   ├── correlation_heatmap_full.png
+   ├── correlation_heatmap_length.png
+   ├── correlation_heatmap_diversity.png
+   ├── correlation_heatmap_entropy.png
+   ├── correlation_heatmap_ppl_ifd.png
+   ├── correlation_heatmap_quality.png
+   ├── scatter_matrix.png
+   ├── metrics_overview.png
+   └── training_convergence.png
 ```
 
 ## 计算指标 (compute_metrics.py)
+
+说明：`data_obs_pipeline.py` 不会调用 `compute_metrics.py`。  
+`compute_metrics.py` 是独立脚本，当前按 `split_*.jsonl` 读取已有 split；而 `data_obs_pipeline.py` 默认保存 `split_*.parquet`。
 
 ### 用法
 
@@ -228,3 +244,63 @@ $$IFD = \frac{\text{Loss}_{\text{with\_prompt}}}{\text{Loss}_{\text{without\_pro
 - `prompt`: 问题
 - `reward_model.ground_truth`: 答案
 - `extra_info.answer`: 答案 (可选)
+
+## Analysis 说明（与当前实现对齐）
+
+- `correlations.csv`：所有可计算的相关性对（不额外过滤 min/max 指标）。
+- `strong_correlations_0.6.csv` / `strong_correlations_0.4.csv`：
+  - 先按 `|correlation| >= threshold` 过滤；
+  - 默认再过滤掉任一侧为 `min_*` / `max_*` 的指标对。
+- 热力图分组：
+  - 会过滤 `min_*` / `max_*` 指标；
+  - `ppl` 与 `ifd` 合并成 `correlation_heatmap_ppl_ifd.png`；
+  - 不再生成 `correlation_heatmap_training.png`。
+
+## 用 DeepSeek 生成实验结论
+
+脚本：`DataObs/scripts/analyze_observation_deepseek.py`
+
+用途：读取 `observation/correlations.csv` 与 `observation/strong_correlations_*.csv`，结合指标含义，调用 DeepSeek API 生成实验观察结论 Markdown。
+
+### 1) 最小用法
+
+```bash
+export DEEPSEEK_API_KEY="你的key"
+
+python /home/hrh/CoT-DataSynth/DataObs/scripts/analyze_observation_deepseek.py \
+  --obs_dir /data/hjw/outputs/MATH-CoT-Qwen3B/observation \
+  --threshold 0.4
+```
+
+默认输出文件：
+- `/data/hjw/outputs/MATH-CoT-Qwen3B/observation/observation_conclusion_deepseek.md`
+
+### 2) `--threshold` 是什么
+
+- `--threshold 0.4` 表示“强相关阈值”是 `|correlation| >= 0.4`。
+- 脚本会优先读 `strong_correlations_0.4.csv`；
+- 如果该文件不存在，会回退到 `correlations.csv` 并按阈值过滤。
+- 一般：
+  - `0.4`：中等相关，覆盖更广；
+  - `0.6`：强相关，更保守。
+
+### 3) 常用参数
+
+- `--model`：DeepSeek 模型，默认 `deepseek-chat`（可改 `deepseek-reasoner`）。
+- `--include_min_max`：是否把 `min_* / max_*` 指标也纳入分析（默认排除）。
+- `--goal`：自定义分析目标（默认已内置冷启动目标）。
+- `--max_tokens`：单次 API 调用 token 上限（默认 8000）。
+- `--max_rounds`：当输出被截断时自动续写的最大轮数（默认 8）。
+- `--output`：自定义输出 Markdown 路径。
+
+### 4) 后台运行示例
+
+```bash
+nohup bash -lc '
+export DEEPSEEK_API_KEY="你的key"
+python /home/hrh/CoT-DataSynth/DataObs/scripts/analyze_observation_deepseek.py \
+  --obs_dir /data/hjw/outputs/MATH-CoT-Qwen3B/observation \
+  --threshold 0.4 \
+  --model deepseek-chat
+' > /data/hjw/outputs/MATH-CoT-Qwen3B/observation/deepseek_observation_analysis.log 2>&1 &
+```

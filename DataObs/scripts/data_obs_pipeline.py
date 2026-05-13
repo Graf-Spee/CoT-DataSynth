@@ -85,6 +85,12 @@ def main():
                         help='Similarity type for diversity: jaccard, levenshtein, cosine, jaro_winkler, ngram, bertouch, bleu, rouge')
     parser.add_argument('--compute_on', default='both', choices=['prompt', 'answer', 'both'], help='What to compute diversity on')
     parser.add_argument('--model', default=None, help='Model for PPL and IFD computation')
+    parser.add_argument('--ppl_ifd_sample_ratio', type=float, default=0.01,
+                        help='Sampling ratio for PPL/IFD (default: 0.01). Use 1.0 for full.')
+    parser.add_argument('--ppl_ifd_max_samples', type=int, default=None,
+                        help='Optional hard cap for PPL/IFD sample size (overrides ratio)')
+    parser.add_argument('--ppl_ifd_sample_seed', type=int, default=42,
+                        help='Random seed for PPL/IFD sampling')
     
     parser.add_argument('--skip_split', action='store_true', help='Skip data splitting (use existing splits)')
     parser.add_argument('--skip_metrics', action='store_true', help='Skip metric computation')
@@ -194,7 +200,13 @@ def main():
             if args.model:
                 logger.info(f"Split {split_id}: computing PPL with {args.model}...")
                 try:
-                    metrics.update(compute_ppl_metrics(split_data, model_name=args.model))
+                    metrics.update(compute_ppl_metrics(
+                        split_data,
+                        model_name=args.model,
+                        sample_ratio=args.ppl_ifd_sample_ratio,
+                        max_samples=args.ppl_ifd_max_samples,
+                        random_seed=args.ppl_ifd_sample_seed,
+                    ))
                 except Exception as e:
                     logger.warning(f"Failed to compute PPL: {e}")
 
@@ -202,7 +214,13 @@ def main():
             if args.model:
                 logger.info(f"Split {split_id}: computing IFD with {args.model}...")
                 try:
-                    metrics.update(compute_ifd_metrics(split_data, model_name=args.model))
+                    metrics.update(compute_ifd_metrics(
+                        split_data,
+                        model_name=args.model,
+                        sample_ratio=args.ppl_ifd_sample_ratio,
+                        max_samples=args.ppl_ifd_max_samples,
+                        random_seed=args.ppl_ifd_sample_seed,
+                    ))
                 except Exception as e:
                     logger.warning(f"Failed to compute IFD: {e}")
 
