@@ -269,17 +269,33 @@ else
     echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
     GENERATION_OUTPUT="${EVAL_OUTPUT_DIR}/generated/responses.parquet"
-
-    GEN_ARGS=""
     
     if [ ! "$MODEL_PATH" = "$BASE_MODEL" ] && [ -f "$MODEL_PATH/adapter_model.safetensors" ]; then
-        echo "[INFO] Detected LoRA adapter, using base model: $BASE_MODEL"
-        LORA_PATH="$MODEL_PATH"
-        MODEL_PATH="$BASE_MODEL"
-        GEN_ARGS="${GEN_ARGS} +model.lora_path=${LORA_PATH} "
+        echo "[INFO] Detected LoRA adapter, merging with base model: $BASE_MODEL"
+
+        # 创建临时目录存放 merged 模型
+        MERGED_MODEL_PATH="${EVAL_OUTPUT_DIR}/merged_model"
+        mkdir -p ${MERGED_MODEL_PATH}
+
+        # 调用 merge 脚本
+        MERGE_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/lora_model_merge/merge_lora_qwen.py"
+
+        python3 ${MERGE_SCRIPT} \
+            --base ${BASE_MODEL} \
+            --lora ${MODEL_PATH} \
+            --tokenizer ${MODEL_PATH} \
+            --output ${MERGED_MODEL_PATH}
+
+        if [ $? -ne 0 ]; then
+            echo "[ERROR] LoRA merge failed!"
+            exit 1
+        fi
+
+        MODEL_PATH=${MERGED_MODEL_PATH}
+        echo "[INFO] LoRA merge completed, using merged model: $MODEL_PATH"
     fi
 
-    GEN_ARGS="${GEN_ARGS} \
+    GEN_ARGS=" \
     model.path=${MODEL_PATH} \
     model.no_chat=${IS_BASE_MODEL} \
     data.path=${EVAL_DATA} \

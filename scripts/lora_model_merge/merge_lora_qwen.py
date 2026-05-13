@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-合并 verl LoRA 权重到 Qwen2.5 基础模型
-适用于 Qwen2.5 0.5B 及其他尺寸
+合并 verl LoRA 权重
+Supports: Qwen 2.5, Llama 3.1
 """
 
 import torch
@@ -72,18 +72,11 @@ def merge_lora_weights(base_path, lora_path, tokenizer_path, output_path):
         # 保存 Tokenizer
         tokenizer.save_pretrained(output_path)
         
-        # 复制其他配置文件
-        config_files = [
-            "chat_template.jinja",
-            "added_tokens.json", 
-            "special_tokens_map.json"
-        ]
-        
-        for filename in config_files:
-            src = os.path.join(lora_path, filename)
+        # 复制整个 tokenizer 目录下的缺失文件
+        for filename in os.listdir(tokenizer_path):
+            src = os.path.join(tokenizer_path, filename)
             dst = os.path.join(output_path, filename)
-            if os.path.exists(src) and not os.path.exists(dst):
-                print(f"复制配置文件: {filename}")
+            if os.path.isfile(src) and not os.path.exists(dst):
                 shutil.copy2(src, dst)
         
         print("✅ 合并完成！")
@@ -105,7 +98,7 @@ def verify_model():
     model = AutoModelForCausalLM.from_pretrained(
         args.output, 
         torch_dtype=torch.float16,
-        device_map="cuda:6",
+        device_map="cuda:0",
         trust_remote_code=True
     )
     

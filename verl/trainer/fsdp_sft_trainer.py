@@ -254,6 +254,19 @@ class FSDPSFTTrainer:
                 device_mesh=self.device_mesh,
                 forward_prefetch=False,
             )
+        elif fsdp_strategy == "ddp":
+            from torch.nn.parallel import DistributedDataParallel as DDP
+
+            local_rank = get_device_id()
+            self.model = self.model.to(f"cuda:{local_rank}")
+
+            self.ddp_model = DDP(
+                self.model,
+                device_ids=[get_device_id()],
+                output_device=get_device_id(),
+                find_unused_parameters=False,
+            )
+            self.fsdp_model = self.ddp_model
         elif fsdp_strategy == "fsdp2":
             assert CPUOffloadPolicy is not None, "PyTorch version >= 2.4 is required for using fully_shard API (FSDP2)"
             mp_policy = MixedPrecisionPolicy(param_dtype=torch.bfloat16, reduce_dtype=torch.float32, cast_forward_inputs=True)
@@ -306,7 +319,17 @@ class FSDPSFTTrainer:
         attention_mask = batch["attention_mask"].to(self.device_name)
         position_ids = batch["position_ids"].to(self.device_name)
         loss_mask = batch.pop("loss_mask")[:, :-1].reshape(-1).to(self.device_name)
-        loss_fct = nn.CrossEntropyLoss(reduction="none")
+
+        use_liger = getattr(self.config.model, "use_liger", False)
+        if use_liger:
+            try:
+                from liger_kernel.transformers.cross_entropy import LigerCrossEntropyLoss
+                loss_fct = LigerCrossEntropyLoss(reduction="none")
+            except Exception:
+                print("Liger loss failed, using CE...")
+                loss_fct = nn.CrossEntropyLoss(reduction="none")
+        else:
+            loss_fct = nn.CrossEntropyLoss(reduction="none")
 
         # Context manager for sequence parallel if needed
         context = self.sharding_manager if use_sp else nullcontext()
@@ -396,12 +419,24 @@ class FSDPSFTTrainer:
         micro_batches = batch.split(self.config.data.micro_batch_size_per_gpu)
         n_micro_batches = len(micro_batches)
         step_loss = 0
-        for micro_batch in micro_batches:
-            loss = self._compute_loss_and_backward(batch=micro_batch) / n_micro_batches
-            step_loss += loss.item()
+
+        no_sync = getattr(self.config.trainer, "no_sync", False)
+        if no_sync:
+            for i, micro_batch in enumerate(micro_batches):
+                is_last = (i == n_micro_batches - 1)
+                sync_context = nullcontext() if is_last else self.fsdp_model.no_sync()
+                with sync_context:
+                    loss = self._compute_loss_and_backward(batch=micro_batch) / n_micro_batches
+                    step_loss += loss.item()
+        else:
+            for micro_batch in micro_batches:
+                loss = self._compute_loss_and_backward(batch=micro_batch) / n_micro_batches
+                step_loss += loss.item()
 
         if self.config.model.strategy == "fsdp":
             grad_norm = self.fsdp_model.clip_grad_norm_(max_norm=self.config.optim.clip_grad)
+        elif self.config.model.strategy == "ddp":
+            grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=self.config.optim.clip_grad)
         elif self.config.model.strategy == "fsdp2":
             grad_norm = fsdp2_clip_grad_norm_(self.fsdp_model.parameters(), max_norm=self.config.optim.clip_grad)
         else:
@@ -461,6 +496,12 @@ class FSDPSFTTrainer:
             if self.device_mesh.get_rank() == 0:
                 os.makedirs(path, exist_ok=True)
                 self.model.save_pretrained(path, state_dict=state_dict)
+                self.tokenizer.save_pretrained(path)
+        elif fsdp_strategy == "ddp":
+            # DDP：直接保存底层原始 PEFT 模型，避免 module. 前缀
+            if self.device_mesh.get_rank() == 0:
+                os.makedirs(path, exist_ok=True)
+                self.model.save_pretrained(path)
                 self.tokenizer.save_pretrained(path)
         elif fsdp_strategy == "fsdp2":
             # FSDP2 checkpoint saving
