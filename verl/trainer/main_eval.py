@@ -46,7 +46,7 @@ def process_item(data_source, response_lst, reward_data, reward_file_path, rewar
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
     
-    # 获取评分函数 & pred extract fun.
+    # 获取评分函数
     reward_fn = getattr(module, reward_func_name)
     
     ground_truth = reward_data["ground_truth"]
@@ -88,7 +88,7 @@ def main(config):
     # 获取配置中的路径和函数名，而不是加载函数对象
     reward_file_path = config.custom_reward_function.path
     reward_func_name = config.custom_reward_function.name
-    pred_func_name   = config.custom_reward_function.pred_name if config.custom_reward_function.calc_maj is True else None
+    pred_func_name   = config.custom_reward_function.pred_name
 
     # Create remote tasks - 传递路径字符串而非函数对象
     remote_tasks = [
@@ -155,37 +155,42 @@ def main(config):
 
 
     # Calculate & Output Metrics
-    results = compute_all_metrics(dataset, scores_per_response, preds_per_response,
-                                  data_source_reward,
-                                  is_correct_per_response, data_sources, max_n=None, num_bootstrap=1000, seed=42)
+    results = compute_all_metrics(dataset, scores_per_response,
+                                  preds_per_response if config.custom_reward_function.calc_maj else [[]] * total,
+                                  data_source_reward, is_correct_per_response, data_sources,
+                                  max_n=None, num_bootstrap=1000, seed=42)
 
-    print("\n" + "="*60)
-    print("📊 Evaluation Results")
-    print("="*60)
+    # print("\n" + "="*60)
+    # print("📊 Evaluation Results")
+    # print("="*60)
     
-    for ds in sorted(data_source_reward.keys()):        
-        print(f"\n📁 Data Source: {ds}")
+    # for ds in sorted(data_source_reward.keys()):        
+    #     print(f"\n📁 Data Source: {ds}")
 
-        for metric, value in results[ds].items():
-            if 'accuracy' in metric:
-                print(f"    {metric}: {value:.2f}%")
-            elif 'total' in metric or 'correct' in metric:
-                print(f"    {metric}: {value}")
-            else:
-                print(f"    {metric}: {value:.4f}")
+    #     for metric, value in results[ds].items():
+    #         if 'accuracy' in metric:
+    #             print(f"    {metric}: {value:.2f}%")
+    #         elif 'total' in metric or 'correct' in metric:
+    #             print(f"    {metric}: {value}")
+    #         else:
+    #             print(f"    {metric}: {value:.4f}")
     
-    # 总体统计
-    if 'overall' in results.keys():
-        print(f"\n📊 Overall Statistics:")
-        print(f"   ✅ Total Correct: {results['overall']['correct']}/{results['overall']['total']}")
-        print(f"   🎯 Overall Accuracy: {results['overall']['accuracy']:.2f}%")
+    # # 总体统计
+    # if 'overall' in results.keys():
+    #     print(f"\n📊 Overall Statistics:")
+    #     print(f"   ✅ Total Correct: {results['overall']['correct']}/{results['overall']['total']}")
+    #     print(f"   🎯 Overall Accuracy: {results['overall']['accuracy']:.2f}%")
 
-    print("="*60)
-    print("Raw Metrics Dictionary:")
-    print(results)
-    print("="*60)
+    # print("="*60)
+    # print("Raw Metrics Dictionary:")
+    # print(results)
+    # print("="*60)
 
     return results
+
+
+def run_evaluation_with_config(config):
+    return main.__wrapped__(config)
 
 
 if __name__ == "__main__":

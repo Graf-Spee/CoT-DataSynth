@@ -94,21 +94,42 @@ def prepare_inputs(tokenizer, prompts, config):
             #     return_tensors="pt",
             # )
 
-            tokenizer.chat_template = """{% if messages[0]['role'] == 'system' %}{% set loop_messages = messages[1:] %}{% set system_message = messages[0]['content'] %}
-            {% else %}{% set loop_messages = messages %}{% set system_message = false %}{% endif %}
-            {% for message in loop_messages %}{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}{% endif %}
-            {% if loop.index0 == 0 and system_message != false %}{% set content = '<<SYS>>\\n' + system_message + '\\n<</SYS>>\\n\\n' + message['content'] %}
-            {% else %}{% set content = message['content'] %}{% endif %}{% if message['role'] == 'user' %}{{ '<s>[INST] ' + content.strip() + ' [/INST]' }}{% elif message['role'] == 'assistant' %}{{ ' ' + content.strip() + ' </s>' }}{% endif %}{% endfor %}"""
+            # tokenizer.chat_template = """{% if messages[0]['role'] == 'system' %}{% set loop_messages = messages[1:] %}{% set system_message = messages[0]['content'] %}
+            # {% else %}{% set loop_messages = messages %}{% set system_message = false %}{% endif %}
+            # {% for message in loop_messages %}{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}{% endif %}
+            # {% if loop.index0 == 0 and system_message != false %}{% set content = '<<SYS>>\\n' + system_message + '\\n<</SYS>>\\n\\n' + message['content'] %}
+            # {% else %}{% set content = message['content'] %}{% endif %}{% if message['role'] == 'user' %}{{ '<s>[INST] ' + content.strip() + ' [/INST]' }}{% elif message['role'] == 'assistant' %}{{ ' ' + content.strip() + ' </s>' }}{% endif %}{% endfor %}"""
 
-            inputs = tokenizer.apply_chat_template(
-                prompts,
-                add_generation_prompt=True,
+            # inputs = tokenizer.apply_chat_template(
+            #     prompts,
+            #     add_generation_prompt=True,
+            #     padding=True,
+            #     truncation=True,
+            #     max_length=config.rollout.prompt_length,
+            #     return_tensors="pt",
+            #     return_dict=True,
+            #     tokenize=True,
+            # )
+
+            template = (
+                "<s>[INST] Answer the following question:\n### Question: {question} "
+                "[/INST] ### Answer: {answer}"
+            )
+            constructed = []
+            for messages in prompts:
+                question_content = ""
+                # Prefer the last user turn as the question for generation.
+                for msg in reversed(messages):
+                    if isinstance(msg, dict) and msg.get("role") == "user":
+                        question_content = msg.get("content", "")
+                        break
+                constructed.append(template.format(question=question_content, answer=""))
+            inputs = tokenizer(
+                constructed,
                 padding=True,
                 truncation=True,
                 max_length=config.rollout.prompt_length,
                 return_tensors="pt",
-                return_dict=True,
-                tokenize=True,
             )
 
         else:
@@ -221,6 +242,11 @@ def main_task(config):
     # convert output_lst from (n_samples, n_data) to (n_data, n_sampels)
     output_lst = np.array(output_lst, dtype=object)
     output_lst = np.transpose(output_lst, axes=(1, 0)).tolist()
+    if len(output_lst) != len(dataset):
+        raise ValueError(
+            f"Generated output size mismatch: got {len(output_lst)}, expected {len(dataset)}. "
+            "Check prompt construction/tokenization path."
+        )
 
     # add to the data frame
     dataset["responses"] = output_lst

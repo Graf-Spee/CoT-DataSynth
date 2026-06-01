@@ -57,6 +57,13 @@ def extract_option_letter(text: str, valid_options: str = 'ABCDE') -> str:
         match = re.findall(r"\((A|B|C|D|E|F)\)", text)
         return match[-1] if match and match[-1] in valid_options else "N/A"
 
+# Adopted from opencompass - opencompass/utils/text_postprocessors.py: last_capital_postprocess
+def last_capital_postprocess(text: str) -> str:
+    for t in text[::-1]:
+        if t.isupper():
+            return t
+    return ""
+
 def extract_flexible(text: str, valid_options: str = 'ABCDE'):
     if not text:
         return ""
@@ -96,7 +103,7 @@ def compute_score(solution_str, ground_truth, method="strict", format_score=0.0,
     gt_letter = str(ground_truth).strip().upper()
     
     # 提取预测的选项
-    pred_letter = extract_option_letter(solution_str)
+    pred_letter = last_capital_postprocess(solution_str)
     if pred_letter == gt_letter:
         return score
     

@@ -13,6 +13,8 @@ BASE_MODEL="$2"
 DATA_NAME="$3"
 EVAL_OUTPUT_DIR="$4"
 GPU_ID="${5:-0}"
+CALC_MAJ=1
+IS_BFCL=0
 
 # =========================== Load User Configs =========================
 # Find & Load Config File
@@ -59,10 +61,45 @@ case $DATA_NAME in
         EVAL_DATA="/data/open_datasets/GSM8K/test.parquet"
         echo "[INFO] Load config for GSM8K: Success!"
         ;;
-    "math" | "math-500" | "math-cot")
+    "livecodebench")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/livecodebench.py"
+        EVAL_DATA="/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet"
+        CALC_MAJ=0
+        echo "[INFO] Load config for LiveCodeBench: Success!"
+        ;;
+    "humaneval")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/mbpp.py"
+        EVAL_DATA="/data/open_datasets/humaneval/openai_humaneval/processed/test.parquet"
+        CALC_MAJ=0
+        echo "[INFO] Load config for HumanEval: Success!"
+        ;;
+    "humanevalplus" | "human-eval-plus")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/mbpp.py"
+        EVAL_DATA="/data/open_datasets/humanevalplus/processed/test.parquet"
+        CALC_MAJ=0
+        echo "[INFO] Load config for HumanEvalPlus: Success!"
+        ;;
+    "math")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/math_verify.py"
+        EVAL_DATA="/data/open_datasets/MATH/train_processed.parquet"
+        echo "[INFO] Load config for MATH: Success!"
+        ;;
+    "math-500" | "math-cot")
         REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/math_verify.py"
         EVAL_DATA="/data/open_datasets/MATH-500/test-processed.parquet"
-        echo "[INFO] Load config for MATH: Success!"
+        echo "[INFO] Load config for MATH-500: Success!"
+        ;;
+    "mbpp")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/mbpp.py"
+        EVAL_DATA="/data/open_datasets/mbpp/sanitized/processed/test.parquet"
+        CALC_MAJ=0
+        echo "[INFO] Load config for MBPP: Success!"
+        ;;
+    "mbppplus" | "mbpp-plus")
+        REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/mbpp.py"
+        EVAL_DATA="/data/open_datasets/mbppplus/processed/test.parquet"
+        CALC_MAJ=0
+        echo "[INFO] Load config for MBPPPlus: Success!"
         ;;
     "numinamath" | "numinamath-CoT")
         REWARD_FUNCTION_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/verl/utils/reward_score/math_verify.py"
@@ -74,10 +111,14 @@ case $DATA_NAME in
         EVAL_DATA="/data/open_datasets/StrategyQA/data/test-processed.parquet"
         echo "[INFO] Load config for StrategyQA: Success!"
         ;;
+    "bfcl")
+        IS_BFCL=1
+        echo "[INFO] Load config for BFCL: Success!"
+        ;;
     *)
         # Default: unknown dataset
         echo "[ERROR] Unsupported dataset $DATA_NAME."
-        echo "Supported datasets: ai2_arc, aqua_rat, commonsenseQA, gsm8k, livecodebench, math, math-500, numinamath, strategyQA"
+        echo "Supported datasets: ai2_arc, aqua_rat, commonsenseQA, gsm8k, humaneval, humanevalplus, livecodebench, math, math-500, mbpp, mbppplus, numinamath, strategyQA, bfcl"
         exit 1
         ;;
 esac
@@ -113,6 +154,56 @@ if [ ! -d "$CONFIG_DIR" ]; then
     exit 1
 fi
 
+# 如果 checkpoint 中有 adapter_model.safetensors，说明是 LoRA 模型，需要 merge
+if [ -f "$CHECKPOINT_PATH/adapter_model.safetensors" ]; then
+    MERGED_MODEL_PATH="${EVAL_OUTPUT_DIR}/merged_model"
+    mkdir -p ${MERGED_MODEL_PATH}
+
+    if [ -f "${MERGED_MODEL_PATH}/config.json" ] && (ls "${MERGED_MODEL_PATH}"/*.safetensors >/dev/null 2>&1 || [ -f "${MERGED_MODEL_PATH}/pytorch_model.bin" ] || [ -f "${MERGED_MODEL_PATH}/model.safetensors.index.json" ]); then
+        MODEL_PATH=${MERGED_MODEL_PATH}
+        echo "[INFO] Reusing existing merged model: $MODEL_PATH"
+    else
+        echo "[INFO] Detected LoRA adapter, merging with base model: $BASE_MODEL"
+
+        # 调用 merge 脚本
+        MERGE_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/lora_model_merge/merge_lora_qwen.py"
+
+        python3 ${MERGE_SCRIPT} \
+            --base ${BASE_MODEL} \
+            --lora ${CHECKPOINT_PATH} \
+            --tokenizer ${CHECKPOINT_PATH} \
+            --output ${MERGED_MODEL_PATH}
+
+        if [ $? -ne 0 ]; then
+            echo "[ERROR] LoRA merge failed!"
+            exit 1
+        fi
+
+        MODEL_PATH=${MERGED_MODEL_PATH}
+        echo "[INFO] LoRA merge completed, using merged model: $MODEL_PATH"
+    fi
+else
+    echo "[INFO] Using checkpoint as full model: $CHECKPOINT_PATH"
+    MODEL_PATH="$CHECKPOINT_PATH"
+fi
+
+# BFCL 评测入口：直接调用专用脚本，绕过 verl main_generation/main_eval
+if [ "$IS_BFCL" -eq 1 ]; then
+    echo "[INFO] BFCL mode detected, bypassing verl generation/evaluation."
+    BFCL_EVAL_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/eval_bfcl_dataobs.py"
+    if [ ! -f "$BFCL_EVAL_SCRIPT" ]; then
+        echo "[ERROR] BFCL evaluation script not found: $BFCL_EVAL_SCRIPT"
+        exit 1
+    fi
+    python3 "$BFCL_EVAL_SCRIPT" \
+        "$MODEL_PATH" \
+        "$BASE_MODEL" \
+        "$DATA_NAME" \
+        "$EVAL_OUTPUT_DIR" \
+        "$GPU_ID"
+    exit $?
+fi
+
 # Stage 1: Generation
 mkdir -p ${EVAL_OUTPUT_DIR}/{generated,logs}
 GENERATION_OUTPUT="${EVAL_OUTPUT_DIR}/generated/responses.parquet"
@@ -121,35 +212,6 @@ echo ""
 echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 echo "Stage 1: Generation"
 echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-
-# 如果 checkpoint 中有 adapter_model.safetensors，说明是 LoRA 模型，需要 merge
-if [ -f "$CHECKPOINT_PATH/adapter_model.safetensors" ]; then
-    echo "[INFO] Detected LoRA adapter, merging with base model: $BASE_MODEL"
-
-    # 创建临时目录存放 merged 模型
-    MERGED_MODEL_PATH="${EVAL_OUTPUT_DIR}/merged_model"
-    mkdir -p ${MERGED_MODEL_PATH}
-
-    # 调用 merge 脚本
-    MERGE_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/lora_model_merge/merge_lora_qwen.py"
-
-    python3 ${MERGE_SCRIPT} \
-        --base ${BASE_MODEL} \
-        --lora ${CHECKPOINT_PATH} \
-        --tokenizer ${CHECKPOINT_PATH} \
-        --output ${MERGED_MODEL_PATH}
-
-    if [ $? -ne 0 ]; then
-        echo "[ERROR] LoRA merge failed!"
-        exit 1
-    fi
-
-    MODEL_PATH=${MERGED_MODEL_PATH}
-    echo "[INFO] LoRA merge completed, using merged model: $MODEL_PATH"
-else
-    echo "[INFO] Using checkpoint as full model: $CHECKPOINT_PATH"
-    MODEL_PATH="$CHECKPOINT_PATH"
-fi
 
 python3 -m verl.trainer.main_generation \
     --config-path=${CONFIG_DIR} \
@@ -187,16 +249,23 @@ echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 echo "Stage 2: Evaluation"
 echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
+EVAL_ARGS="\
+data.path=${GENERATION_OUTPUT} \
+data.output_path=${EVALUATION_OUTPUT} \
+data.response_key=responses \
+data.data_source_key=data_source \
+data.reward_model_key=reward_model \
+custom_reward_function.path=${REWARD_FUNCTION_PATH} \
+ray_init.num_cpus=48"
+
+if [[ "$CALC_MAJ" == 0 ]]; then
+    EVAL_ARGS="${EVAL_ARGS} custom_reward_function.calc_maj=false"
+fi
+
 python3 -m verl.trainer.main_eval \
     --config-path=${CONFIG_DIR} \
     --config-name=evaluation \
-    data.path=${GENERATION_OUTPUT} \
-    data.output_path=${EVALUATION_OUTPUT} \
-    data.response_key=responses \
-    data.data_source_key=data_source \
-    data.reward_model_key=reward_model \
-    custom_reward_function.path=${REWARD_FUNCTION_PATH} \
-    ray_init.num_cpus=48 \
+    ${EVAL_ARGS} \
     2>&1 | tee ${EVAL_OUTPUT_DIR}/logs/evaluation.log
 
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
@@ -215,4 +284,3 @@ grep -E "(test_score|pass@|accuracy|reward)" ${EVAL_OUTPUT_DIR}/logs/evaluation.
 
 echo ""
 echo "Output directory: ${EVAL_OUTPUT_DIR}"
-
