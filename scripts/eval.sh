@@ -49,6 +49,10 @@ TARGET_EVAL_DIR="${TARGET_EVAL_DIR:-}"
 
 # Control seed for generation
 SEED="${SEED:-42}"
+
+# Control calculation of maj@n
+CALC_MAJ="${CALC_MAJ:-1}"
+IS_BFCL=0
 # =======================================================================
 
 
@@ -79,7 +83,7 @@ find_latest_eval_dir() {
 # =========================== Param Parsing =============================
 if [ "$#" -lt 2 ]; then
     echo "Usage: bash $0 <dataset_name> <gpu_ids> [checkpoint_path] [other configs...]"
-    echo "Supported datasets (any case): arc-challenge, aqua_rat, commonsenseQA, gsm8k, livecodebench, math, math-500, numinamath, strategyQA"
+    echo "Supported datasets (any case): arc-challenge, aqua_rat, commonsenseQA, gsm8k, humaneval, humanevalplus, livecodebench, math, math-500, mbpp, mbppplus, numinamath, strategyQA, bfcl"
     echo ""
     echo "Examples:"
     echo "  # Evaluate the base model on gsm8k"
@@ -142,16 +146,43 @@ case $DATASET in
         echo "[INFO] Load config for GSM8K: Success!"
         ;;
     "livecodebench")
-        DATA_NAME="gsm8k"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/gsm8k.py")
-        EVAL_DATA="/data/open_datasets/livecodebench/..."
+        DATA_NAME="livecodebench"
+        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/livecodebench.py")
+        EVAL_DATA="/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet"
 
         PROMPT_KEY="prompt"              # Question
         DATA_SOURCE_KEY="data_source"    # Data Source
         REWARD_MODEL_KEY="reward_model"  # Dict Containing GT (ground_truth)
+
+        CALC_MAJ=0
         
         echo "[INFO] Load config for LiveCodeBench: Success!"
-        exit 1
+        ;;
+    "humaneval")
+        DATA_NAME="humaneval"
+        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/mbpp.py")
+        EVAL_DATA="/data/open_datasets/humaneval/openai_humaneval/processed/test.parquet"
+
+        PROMPT_KEY="prompt"              # Question
+        DATA_SOURCE_KEY="data_source"    # Data Source
+        REWARD_MODEL_KEY="reward_model"  # Dict Containing GT (ground_truth)
+
+        CALC_MAJ=0
+
+        echo "[INFO] Load config for HumanEval: Success!"
+        ;;
+    "humanevalplus" | "human-eval-plus")
+        DATA_NAME="humanevalplus"
+        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/mbpp.py")
+        EVAL_DATA="/data/open_datasets/humanevalplus/processed/test.parquet"
+
+        PROMPT_KEY="prompt"              # Question
+        DATA_SOURCE_KEY="data_source"    # Data Source
+        REWARD_MODEL_KEY="reward_model"  # Dict Containing GT (ground_truth)
+
+        CALC_MAJ=0
+
+        echo "[INFO] Load config for HumanEvalPlus: Success!"
         ;;
     "math")
         DATA_NAME="math"
@@ -175,6 +206,32 @@ case $DATASET in
 
         echo "[INFO] Load config for MATH-500: Success!"
         ;;
+    "mbpp")
+        DATA_NAME="mbpp"
+        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/mbpp.py")
+        EVAL_DATA="/data/open_datasets/mbpp/sanitized/processed/test.parquet"
+
+        PROMPT_KEY="prompt"              # Question
+        DATA_SOURCE_KEY="data_source"    # Data Source
+        REWARD_MODEL_KEY="reward_model"  # Dict Containing GT (ground_truth)
+
+        CALC_MAJ=0
+        
+        echo "[INFO] Load config for MBPP: Success!"
+        ;;
+    "mbppplus" | "mbpp-plus")
+        DATA_NAME="mbppplus"
+        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/mbpp.py")
+        EVAL_DATA="/data/open_datasets/mbppplus/processed/test.parquet"
+
+        PROMPT_KEY="prompt"              # Question
+        DATA_SOURCE_KEY="data_source"    # Data Source
+        REWARD_MODEL_KEY="reward_model"  # Dict Containing GT (ground_truth)
+
+        CALC_MAJ=0
+
+        echo "[INFO] Load config for MBPPPlus: Success!"
+        ;;
     "numinamath" | "numinamath-CoT")
         DATA_NAME="numinamath"
         REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/math_verify.py")
@@ -197,10 +254,15 @@ case $DATASET in
 
         echo "[INFO] Load config for StrategyQA: Success!"
         ;;
+    "bfcl")
+        DATA_NAME="bfcl"
+        IS_BFCL=1
+        echo "[INFO] Load config for BFCL: Success!"
+        ;;
     *)
         # Default: unknown dataset
         echo "[ERROR] Unsupported dataset $DATASET."
-        echo "Supported datasets: ai2_arc, aqua_rat, commonsenseQA, gsm8k, livecodebench, math, math-500, numinamath, strategyQA"
+        echo "Supported datasets: ai2_arc, aqua_rat, commonsenseQA, gsm8k, humaneval, humanevalplus, livecodebench, math, math-500, mbpp, mbppplus, numinamath, strategyQA, bfcl"
         exit 1
         ;;
 esac
@@ -239,47 +301,42 @@ export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 export WANDB_MODE=offline
 
-
-# ============================== Generation Skip =============================
-if [ "$SKIP_GEN" = "1" ]; then
+# ============================= Output Dir Setup =============================
+if [ "$IS_BFCL" = "1" ]; then
+    # BFCL 不受 SKIP_GEN 影响，始终走 BFCL 的 generate/evaluate 逻辑
     if [ -n "$TARGET_EVAL_DIR" ]; then
-        echo "[INFO] SKIP_GEN=1, using designated TARGET_EVAL_DIR: ${TARGET_EVAL_DIR}..."
+        EVAL_OUTPUT_DIR=${TARGET_EVAL_DIR}
+    else
+        EVAL_OUTPUT_DIR="${PROJECT_DIR}/evals/${MODEL_NAME}--${DATA_NAME}--eval--$(date +%m%d-%H%M%S)"
+    fi
+    mkdir -p ${EVAL_OUTPUT_DIR}/{generated,logs}
+elif [ "$SKIP_GEN" = "1" ]; then
+    if [ -n "$TARGET_EVAL_DIR" ]; then
         EVAL_OUTPUT_DIR=${TARGET_EVAL_DIR}
         if [ ! -f "${EVAL_OUTPUT_DIR}/generated/responses.parquet" ]; then
             echo "[ERROR] Designated dir missing responses.parquet: ${EVAL_OUTPUT_DIR}"
             exit 1
         fi
     else
-        echo "[INFO] SKIP_GEN=1, searching for latest existing results..."
         EVAL_OUTPUT_DIR=$(find_latest_eval_dir) || exit 1
     fi
-    
-    echo "[INFO] Reusing: ${EVAL_OUTPUT_DIR}"
-    GENERATION_OUTPUT="${EVAL_OUTPUT_DIR}/generated/responses.parquet"
 else
-    # Output directory for eval
     EVAL_OUTPUT_DIR="${PROJECT_DIR}/evals/${MODEL_NAME}--${DATA_NAME}--eval--$(date +%m%d-%H%M%S)"
     mkdir -p ${EVAL_OUTPUT_DIR}/{generated,logs}
+fi
 
+# ============================= LoRA Merge (always check) =============================
+if [ ! "$MODEL_PATH" = "$BASE_MODEL" ] && [ -f "$MODEL_PATH/adapter_model.safetensors" ]; then
+    MERGED_MODEL_PATH="${EVAL_OUTPUT_DIR}/merged_model"
+    mkdir -p ${MERGED_MODEL_PATH}
 
-    # ========================== Stage 1: Generation =========================
-    echo ""
-    echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-    echo "Stage 1: Generation (Generate Responses)"
-    echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-
-    GENERATION_OUTPUT="${EVAL_OUTPUT_DIR}/generated/responses.parquet"
-    
-    if [ ! "$MODEL_PATH" = "$BASE_MODEL" ] && [ -f "$MODEL_PATH/adapter_model.safetensors" ]; then
+    if [ -f "${MERGED_MODEL_PATH}/config.json" ] && (ls "${MERGED_MODEL_PATH}"/*.safetensors >/dev/null 2>&1 || [ -f "${MERGED_MODEL_PATH}/pytorch_model.bin" ] || [ -f "${MERGED_MODEL_PATH}/model.safetensors.index.json" ]); then
+        MODEL_PATH=${MERGED_MODEL_PATH}
+        echo "[INFO] Reusing existing merged model: $MODEL_PATH"
+    else
         echo "[INFO] Detected LoRA adapter, merging with base model: $BASE_MODEL"
 
-        # 创建临时目录存放 merged 模型
-        MERGED_MODEL_PATH="${EVAL_OUTPUT_DIR}/merged_model"
-        mkdir -p ${MERGED_MODEL_PATH}
-
-        # 调用 merge 脚本
         MERGE_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/lora_model_merge/merge_lora_qwen.py"
-
         python3 ${MERGE_SCRIPT} \
             --base ${BASE_MODEL} \
             --lora ${MODEL_PATH} \
@@ -294,6 +351,42 @@ else
         MODEL_PATH=${MERGED_MODEL_PATH}
         echo "[INFO] LoRA merge completed, using merged model: $MODEL_PATH"
     fi
+fi
+
+# ============================= BFCL Early Path =============================
+if [ "$IS_BFCL" = "1" ]; then
+    echo "[INFO] BFCL mode detected, bypassing verl generation/evaluation."
+    BFCL_EVAL_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/eval_bfcl_dataobs.py"
+    if [ ! -f "$BFCL_EVAL_SCRIPT" ]; then
+        echo "[ERROR] BFCL evaluation script not found: $BFCL_EVAL_SCRIPT"
+        exit 1
+    fi
+    python3 "$BFCL_EVAL_SCRIPT" \
+        "$MODEL_PATH" \
+        "$BASE_MODEL" \
+        "$DATA_NAME" \
+        "$EVAL_OUTPUT_DIR" \
+        "$gpu_ids"
+    exit $?
+fi
+
+# ============================== Generation Skip =============================
+if [ "$SKIP_GEN" = "1" ]; then
+    if [ -n "$TARGET_EVAL_DIR" ]; then
+        echo "[INFO] SKIP_GEN=1, using designated TARGET_EVAL_DIR: ${TARGET_EVAL_DIR}..."
+    else
+        echo "[INFO] SKIP_GEN=1, using latest existing results..."
+    fi
+    echo "[INFO] Reusing: ${EVAL_OUTPUT_DIR}"
+    GENERATION_OUTPUT="${EVAL_OUTPUT_DIR}/generated/responses.parquet"
+else
+    # ========================== Stage 1: Generation =========================
+    echo ""
+    echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    echo "Stage 1: Generation (Generate Responses)"
+    echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+
+    GENERATION_OUTPUT="${EVAL_OUTPUT_DIR}/generated/responses.parquet"
 
     GEN_ARGS=" \
     model.path=${MODEL_PATH} \
@@ -361,6 +454,11 @@ data.data_source_key=${DATA_SOURCE_KEY} \
 data.reward_model_key=${REWARD_MODEL_KEY} \
 custom_reward_function.path=${REWARD_FUNCTION_PATH} \
 ray_init.num_cpus=48"
+
+if [[ "$CALC_MAJ" == 0 ]]; then
+    EVAL_ARGS="${EVAL_ARGS} \
+    custom_reward_function.calc_maj=false"
+fi
 
 echo "=========================================="
 echo "Evaluation Setup:"

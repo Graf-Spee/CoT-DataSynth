@@ -2,8 +2,8 @@
 # set -x
 
 # ============================ Configurations ===========================
-MODEL_NAME="Qwen2.5-Math-7B"
-MODEL_ID="Qwen/Qwen2.5-Math-7B"
+MODEL_NAME="all-MiniLM-L6-v2"
+MODEL_ID="sentence-transformers/all-MiniLM-L6-v2"
 
 MODEL_PATH="/data/pretrain_models/${MODEL_NAME}"
 

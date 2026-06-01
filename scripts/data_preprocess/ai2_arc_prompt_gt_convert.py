@@ -23,39 +23,20 @@ def format_arc_prompt(row):
     else:
         raise TypeError("Column \"choices\" is not of type \"dict\". Please check the parquet file.")
     
-    # 格式化选项为字符串 (例如: "A) xxxxxx")
-    options_lines = []
+    options_lines = {}
     for label, text in zip(choice_labels, choice_texts):
-        options_lines.append(f"({label}) {text}")
-    options_text = "\n".join(options_lines)
-    
-    # 构建有效的选项标签列表（用于提示模型）
-    wrapped_choice_labels = [f"({label})" for label in choice_labels]
-    valid_labels = ", ".join(wrapped_choice_labels)
-    
-    prompt_content = f"""Answer the following multiple choice question step by step.
-Your final answer should be exactly one of the option labels: {valid_labels}.
+        options_lines[label] = text
+        
+    prompt_content = f"""{question}\nA. {options_lines['A']}\nB. {options_lines['B']}\nC. {options_lines['C']}\nD. {options_lines['D']}\nE. {options_lines['E']}\nAnswer:"""
 
-Question: {question}
-
-Options:
-{options_text}
-
-Please explain your reasoning, then clearly state your final answer using the option label ({valid_labels})."""
-
-    return [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": prompt_content}
-    ]
+    return prompt_content
 
 # Read Original Data
-input_path = '/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet'
+input_path = '/data/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet'
 df = pd.read_parquet(input_path)
 
-# 关键：创建包含 'ground_truth' 键的 reward_model 列
-# answerKey 是正确选项的标签，如 "A", "B", "C", "D"
 df['reward_model'] = df['answerKey'].apply(lambda x: {
-    'ground_truth': str(x).strip().upper(),  # 确保是 "A", "B", "C", 或 "D"
+    'ground_truth': str(x).strip().upper(),
 })
 
 # 创建 prompt 列
@@ -67,7 +48,7 @@ df['data_source'] = 'commonsenseQA'
 # 保存处理后的数据（保留原始列便于调试）
 output_columns = ['prompt', 'question', 'choices', 'answerKey', 'id', 'data_source', 'reward_model']
 df[output_columns].to_parquet(
-    '/data/open_datasets/CommonsenseQA/data/validation-processed.parquet',
+    '/data/open_datasets/CommonsenseQA/data/train-processed.parquet',
     index=False
 )
 
