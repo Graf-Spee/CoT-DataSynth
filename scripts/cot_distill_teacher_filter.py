@@ -38,7 +38,7 @@ REASONING_SUFFIX = {
     # Distillation-Bench style adapted for code generation output format
     "mbpp": (
         "Provide your step-by-step reasoning first, and then output the final "
-        "Python solution wrapped in ```python ... ```."
+        "Python solution in the following format: ```python\n\n```."
     ),
 }
 
@@ -147,6 +147,8 @@ def _prepare_generation_rows(df: pd.DataFrame, dataset: str) -> List[Dict[str, A
 
 
 def run(args: argparse.Namespace) -> None:
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_ids
+
     dataset = _normalize_dataset_name(args.dataset)
     compute_score = _load_reward_functions(dataset)
 
@@ -228,6 +230,10 @@ def run(args: argparse.Namespace) -> None:
         )
     )
 
+    del teacher
+    import gc
+    gc.collect()
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="CoT distillation with teacher correctness filtering.")
@@ -244,8 +250,10 @@ def parse_args() -> argparse.Namespace:
         help="Model load dtype.",
     )
 
+    parser.add_argument("--gpu-ids", type=str, default="0", help="The GPU IDs of all usable GPUs.")
+
     parser.add_argument("--num-cots", type=int, default=4, help="N: number of CoT samples per row.")
-    parser.add_argument("--max-new-tokens", type=int, default=512, help="Max generation tokens per CoT.")
+    parser.add_argument("--max-new-tokens", type=int, default=8192, help="Max generation tokens per CoT.")
     parser.add_argument("--do-sample", action="store_true", help="Enable sampling; required when num-cots > 1.")
     parser.add_argument("--temperature", type=float, default=0.7, help="Sampling temperature.")
     parser.add_argument("--top-p", type=float, default=0.95, help="Sampling top-p.")
@@ -254,7 +262,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--gpu-memory-utilization",
         type=float,
-        default=0.85,
+        default=0.95,
         help="vLLM GPU memory utilization (0,1].",
     )
     parser.add_argument(
