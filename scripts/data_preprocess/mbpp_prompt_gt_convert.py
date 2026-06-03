@@ -2,30 +2,15 @@ import pandas as pd
 import json
 
 def format_mbpp_prompt(row):
-    """将 LiveCodeBench 题目格式化为对话形式的 prompt"""
+    """将题目格式化为对话形式的 prompt"""
     question_content = row['prompt']
     test_list = "\n".join(row['test_list'])
     test_imports = "\n".join(row['test_imports'])
     
     # 构造提示词内容
-    prompt_content = f"""{question_content} Your code should satisfy these tests:
+    prompt_content = f"""You are an expert Python programmer, and here is your task:\n{question_content}\nYour code should pass these tests:\n\n{test_list}\n You should submit your final solution in the following format: ```python\n\n```"""
 
-{test_list}"""
-
-    # 如果有 test imports，则追加到提示词中
-    if test_imports and test_imports.strip():
-        prompt_content += f"""
-
-The following imports are needed to solve the problem:
-```python
-{test_imports}
-```"""
-
-    prompt_content += """
-
-Please write Python code to solve this problem. Think step by step, and wrap your final answer in '```python ```'."""
-
-    return [{"role": "user", "content": prompt_content}]
+    return prompt_content
 
 
 def process_ground_truth(x):
@@ -43,7 +28,7 @@ def process_ground_truth(x):
 # ==================== 主流程 ====================
 
 # 1. 读取 LiveCodeBench 数据集（请替换为实际路径）
-input_path = '/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet'
+input_path = '/data/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet'
 df = pd.read_parquet(input_path)
 
 # 2. 创建 reward_model 列，ground_truth 存放 public_test_cases
@@ -73,7 +58,7 @@ output_columns = [
     'test_list',
 ]
 
-output_path = '/data/open_datasets/mbpp/sanitized/processed/test.parquet'
+output_path = '/data/open_datasets/mbpp/sanitized/processed/train-full.parquet'
 df[output_columns].to_parquet(output_path, index=False)
 
 # 6. 验证输出
