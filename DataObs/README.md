@@ -4,11 +4,14 @@
 
 ## 运行
 
+> 注意：`scripts/data_obs_pipeline.py` 已弃用，当前推荐使用
+> `scripts/data_obs_pipeline_test.py`。旧文件暂时保留，待验证完成后再删除。
+
 ### 基础用法
 
 ```bash
 cd /home/hrh/CoT-DataSynth/DataObs
-python scripts/data_obs_pipeline.py \
+python scripts/data_obs_pipeline_test.py \
   --data_path /data/open_datasets/GSM8K/train_messages.parquet \
   --model_id /data/pretrain_models/Qwen2.5-0.5B-Instruct \
   --n_splits 10 \

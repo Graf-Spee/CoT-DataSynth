@@ -1,11 +1,14 @@
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable, Dict, List
 
 import pandas as pd
 import numpy as np
+from copy import deepcopy
+
+from verl.utils.eval.prompt_templates.commonsenseqa import commonsenseqa_plain, commonsenseqa_zeroshot, commonsenseqa_7_shot
 
 
-PreprocessFn = Callable[[pd.DataFrame], pd.DataFrame]
+PreprocessFn = Callable[[pd.DataFrame, str], pd.DataFrame]
 
 
 def _normalize_dataset_name(dataset_name: str) -> str:
@@ -19,8 +22,19 @@ def _normalize_dataset_name(dataset_name: str) -> str:
     return raw_name
 
 
-def _commonsenseqa_zeroshot(df: pd.DataFrame) -> pd.DataFrame:
-    def _template(row: pd.Series) -> str:
+def _commonsenseqa(df: pd.DataFrame, method: str) -> pd.DataFrame:
+    normed_method = method.strip().lower()
+    assert normed_method in ['plain', 'zeroshot', 'fewshot']
+
+    template = None
+    if normed_method == 'plain':
+        template = commonsenseqa_plain
+    elif normed_method == 'zeroshot':
+        template = commonsenseqa_zeroshot
+    else:
+        template = commonsenseqa_7_shot
+    
+    def _fill_template(row: pd.Series) -> List[Dict]:
         question = row['question']
         choices = row['choices']  # 字典格式: {'text': array([...]), 'label': array([...])}
         
@@ -40,34 +54,37 @@ def _commonsenseqa_zeroshot(df: pd.DataFrame) -> pd.DataFrame:
         for label, text in zip(choice_labels, choice_texts):
             options_lines[label] = text
             
-        prompt_content = f"""{question}\nA. {options_lines['A']}\nB. {options_lines['B']}\nC. {options_lines['C']}\nD. {options_lines['D']}\nE. {options_lines['E']}\nAnswer:"""
+        prompt = template[0 : len(template)-1]
+        last_user = deepcopy(template[-1])
+        last_user['content'] = last_user['content'].format(question=question, A=options_lines['A'], B=options_lines['B'], C=options_lines['C'], D=options_lines['D'], E=options_lines['E'])
+        prompt.append(last_user)
 
-        return prompt_content
+        return prompt
 
     df['reward_model'] = df['answerKey'].apply(lambda x: {
         'ground_truth': str(x).strip().upper(),
     })
-    df['prompt'] = df.apply(_template, axis=1)
+    df['prompt'] = df.apply(_fill_template, axis=1)
     df['data_source'] = 'CommonsenseQA'
 
     return df[['prompt', 'reward_model', 'data_source']]
 
 
-PROMPT_TEMPLATE_ZEROSHOT: Dict[str, PreprocessFn] = {
-    "commonsenseqa": _commonsenseqa_zeroshot,
+PROMPT_TEMPLATE: Dict[str, PreprocessFn] = {
+    "commonsenseqa": _commonsenseqa,
     # "dataset_name": _preprocess_xxx,
 }
 
 
-def apply_prompt_template(dataset_name: str, input_parquet_path: str, output_parquet_path: str) -> None:
+def apply_prompt_template(dataset_name: str, method: str, input_parquet_path: str, output_parquet_path: str) -> None:
     """
     Read parquet -> apply dataset-specific prompt template -> write parquet.
     Returns the processed dataframe.
     """
     dataset_key = _normalize_dataset_name(dataset_name)
-    preprocess_fn = PROMPT_TEMPLATE_ZEROSHOT.get(dataset_key)
+    preprocess_fn = PROMPT_TEMPLATE.get(dataset_key)
     if preprocess_fn is None:
-        supported = ", ".join(sorted(PROMPT_TEMPLATE_ZEROSHOT.keys()))
+        supported = ", ".join(sorted(PROMPT_TEMPLATE.keys()))
         raise ValueError(f"Unsupported dataset '{dataset_name}'. Supported datasets: {supported}")
 
     input_path = Path(input_parquet_path).expanduser()
@@ -80,7 +97,7 @@ def apply_prompt_template(dataset_name: str, input_parquet_path: str, output_par
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     dataframe = pd.read_parquet(input_path)
-    processed_dataframe = preprocess_fn(dataframe)
+    processed_dataframe = preprocess_fn(dataframe, method)
     processed_dataframe.to_parquet(output_path, index=False)
     
     return
