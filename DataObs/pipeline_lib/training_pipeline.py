@@ -6,12 +6,12 @@ Handles training execution, GPU allocation, and result collection
 import logging
 import subprocess
 import json
-import yaml
-import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 import time
+
+from .dataobs_eval_runner import run_dataobs_evaluation
 
 logger = logging.getLogger(__name__)
 
@@ -176,8 +176,8 @@ class TrainingPipeline:
         timeout: Optional[int] = None,
         skip_completed: bool = True,
         val_data_path: Optional[str] = None,
-        eval_script_path: Optional[str] = None,
         eval_data_name: Optional[str] = None,
+        prompt_template_method: str = "zeroshot",
         num_epochs: int = 15,
     ) -> Dict[int, bool]:
         """
@@ -189,8 +189,6 @@ class TrainingPipeline:
             parallel: Whether to run trainings in parallel (not implemented yet)
             timeout: Timeout per training in seconds
             skip_completed: Skip splits that already have training_results.json
-            eval_script_path: Path to evaluation script (optional)
-
         Returns:
             Dictionary mapping split_id to success status
         """
@@ -222,13 +220,12 @@ class TrainingPipeline:
             if success:
                 self._update_split_log(split_id, "completed", "Training succeeded")
 
-                # Run evaluation if script provided
-                if eval_script_path and eval_data_name:
+                if eval_data_name:
                     logger.info(f"Running evaluation for split {split_id}...")
                     eval_success = self.run_evaluation(
                         config,
-                        eval_script_path,
-                        eval_data_name
+                        eval_data_name,
+                        prompt_template_method=prompt_template_method,
                     )
                     if eval_success:
                         logger.info(f"Evaluation for split {split_id} succeeded")
@@ -247,15 +244,14 @@ class TrainingPipeline:
     def run_evaluation(
         self,
         config: Dict[str, Any],
-        eval_script_path: str,
         eval_data_name: str,
+        prompt_template_method: str = "zeroshot",
     ) -> bool:
         """
         Run evaluation on a trained split
 
         Args:
             config: Training configuration
-            eval_script_path: Path to evaluation script
 
         Returns:
             True if evaluation succeeded, False otherwise
@@ -265,99 +261,90 @@ class TrainingPipeline:
         eval_output_dir = config['eval_output_dir']
         base_model_id = config['base_model_id']
 
-        # 查找最新的 checkpoint (global_step_*)
-        output_path = Path(output_dir)
-        checkpoints = list(output_path.glob("global_step_*"))
-        if not checkpoints:
+        latest_checkpoint = self._find_latest_checkpoint(output_dir)
+        if latest_checkpoint is None:
             logger.warning(f"No checkpoints found in {output_dir}")
             return False
 
-        latest_checkpoint = sorted(checkpoints, key=lambda x: int(x.name.split('_')[2]))[-1]
         logger.info(f"Using checkpoint: {latest_checkpoint}")
 
         # Prepare GPU string
         gpu_str = ','.join(map(str, gpu_ids)) if gpu_ids else '0'
-        
-        # Prepare command
-        eval_script_path = Path(eval_script_path)
-        if not eval_script_path.is_absolute():
-            eval_script_path = self.cot_datasynth_dir / eval_script_path
-
-        cmd = [
-            'bash',
-            str(eval_script_path),
-            str(latest_checkpoint),     # checkpoint path (param 1)
-            str(base_model_id),         # base model (param 2)
-            str(eval_data_name),        # dataset name (param 3)
-            str(eval_output_dir),       # eval output dir (param 4)
-            str(gpu_str),               # gpu_id (param 5)
-        ]
-
-        logger.info(f"Running evaluation: {' '.join(cmd)}")
-        logger.info(f"Working directory: {self.cot_datasynth_dir}")
 
         try:
-            result = subprocess.run(
-                cmd,
-                cwd=str(self.cot_datasynth_dir),
-                timeout=3600,  # 1 hour timeout for evaluation
-                capture_output=True,
-                text=True,
+            result = run_dataobs_evaluation(
+                checkpoint_path=str(latest_checkpoint),
+                base_model=str(base_model_id),
+                data_name=str(eval_data_name),
+                eval_output_dir=str(eval_output_dir),
+                gpu_id=str(gpu_str),
+                repo_dir=str(self.cot_datasynth_dir),
+                prompt_template_method=prompt_template_method,
             )
-
-            if result.returncode == 0:
-                # 尝试从评估输出中提取准确率
-                with open(f'{eval_output_dir}/logs/evaluation.log', 'r', encoding='utf-8') as f:
-                    output = f.read()
-                import re
-
-                # 尝试多种模式匹配准确率
-                acc_patterns = [
-                    r'accuracy[:\s]+([0-9.]+)',
-                    r'test_score[:\s]+([0-9.]+)',
-                    r'pass@1[:\s]+([0-9.]+)',
-                ]
-
-                accuracy = None
-                for pattern in acc_patterns:
-                    acc_match = re.search(pattern, output, re.IGNORECASE)
-                    if acc_match:
-                        accuracy = float(acc_match.group(1))
-                        logger.info(f"Evaluation accuracy: {accuracy}")
-                        break
-
-                if accuracy is not None:
-                    # 保存到 training_results.json
-                    results_file = Path(output_dir) / "training_results.json"
-                    if results_file.exists():
-                        with open(results_file) as f:
-                            results = json.load(f)
-                    else:
-                        results = {}
-
-                    results['test_accuracy'] = accuracy
-                    with open(results_file, 'w') as f:
-                        json.dump(results, f, indent=2)
-
-                    logger.info(f"Saved test_accuracy to {results_file}")
-                else:
-                    logger.warning("Could not extract accuracy from evaluation output")
-
-                return True
+            self._save_evaluation_results(
+                output_dir=output_dir,
+                eval_data_name=eval_data_name,
+                eval_result=result,
+            )
+            if result.accuracy is not None:
+                logger.info(f"Evaluation accuracy for {eval_data_name}: {result.accuracy}")
             else:
-                logger.error(f"Evaluation failed with return code {result.returncode}")
-                logger.error(f"STDOUT: {result.stdout[-1000:]}")  # 最后 1000 字符
-                logger.error(f"STDERR: {result.stderr[-1000:]}")
-                return False
+                logger.warning(f"Evaluation completed but accuracy is missing for {eval_data_name}")
+            return bool(result.success)
 
-        except subprocess.TimeoutExpired:
-            logger.error(f"Evaluation timed out after 3600 seconds")
-            return False
         except Exception as e:
             logger.error(f"Evaluation failed with exception: {e}")
             import traceback
             logger.error(traceback.format_exc())
             return False
+
+    def _find_latest_checkpoint(self, output_dir: str) -> Optional[Path]:
+        output_path = Path(output_dir)
+        checkpoints = list(output_path.glob("global_step_*"))
+        if not checkpoints:
+            return None
+        return sorted(checkpoints, key=lambda x: int(x.name.split('_')[2]))[-1]
+
+    def _save_evaluation_results(
+        self,
+        output_dir: str,
+        eval_data_name: str,
+        eval_result: Any,
+    ) -> None:
+        results_file = Path(output_dir) / "training_results.json"
+        if results_file.exists():
+            try:
+                with open(results_file) as f:
+                    results = json.load(f)
+            except Exception:
+                results = {}
+        else:
+            results = {}
+
+        by_dataset = results.get("test_accuracy_by_dataset")
+        if not isinstance(by_dataset, dict):
+            by_dataset = {}
+        by_dataset[eval_data_name] = eval_result.accuracy
+
+        artifact_map = results.get("eval_artifacts_by_dataset")
+        if not isinstance(artifact_map, dict):
+            artifact_map = {}
+        artifact_map[eval_data_name] = {
+            "eval_output_dir": eval_result.eval_output_dir,
+            "generation_output": eval_result.generation_output,
+            "labeled_output": eval_result.labeled_output,
+        }
+
+        results["test_accuracy"] = eval_result.accuracy
+        results["last_eval_dataset"] = eval_data_name
+        results["last_eval_accuracy"] = eval_result.accuracy
+        results["test_accuracy_by_dataset"] = by_dataset
+        results["eval_artifacts_by_dataset"] = artifact_map
+
+        with open(results_file, 'w') as f:
+            json.dump(results, f, indent=2)
+
+        logger.info(f"Saved evaluation results to {results_file}")
 
     def _parse_training_metrics(self, stdout: str, stderr: str) -> Dict[str, float]:
         """从训练输出中解析 metrics"""

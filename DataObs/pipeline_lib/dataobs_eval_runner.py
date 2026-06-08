@@ -7,6 +7,7 @@ returns structured evaluation results directly.
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import os
@@ -17,13 +18,14 @@ import importlib.util
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import pandas as pd
 import ray
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
 from verl.trainer.main_generation import run_generation
 from verl.trainer.main_eval import run_evaluation_with_config
-from verl.utils.eval.prompt_template import apply_prompt_template
+from verl.utils.eval.apply_prompt_template import apply_prompt_template
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +90,26 @@ def _apply_runtime_env(gpu_id: str) -> int:
     os.environ["WANDB_MODE"] = "offline"
     gpu_list = [x.strip() for x in gpu_id.split(",") if x.strip()]
     return max(1, len(gpu_list))
+
+
+_RUNTIME_ENV_KEYS = (
+    "CUDA_VISIBLE_DEVICES",
+    "HF_HUB_OFFLINE",
+    "TRANSFORMERS_OFFLINE",
+    "WANDB_MODE",
+)
+
+
+def _snapshot_runtime_env() -> Dict[str, Optional[str]]:
+    return {key: os.environ.get(key) for key in _RUNTIME_ENV_KEYS}
+
+
+def _restore_runtime_env(snapshot: Dict[str, Optional[str]]) -> None:
+    for key, value in snapshot.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
 
 
 def _dataset_config(repo_root: Path, data_name: str) -> Dict[str, Any]:
@@ -209,6 +231,7 @@ def _extract_accuracy(results: Dict[str, Any]) -> Optional[float]:
 
 def _prepare_generation_input_data(
     dataset_name: str,
+    prompt_template_method: str,
     source_parquet_path: Path,
     isolated_eval_dir: Path,
 ) -> Path:
@@ -222,6 +245,7 @@ def _prepare_generation_input_data(
     try:
         apply_prompt_template(
             dataset_name=dataset_name,
+            method=prompt_template_method,
             input_parquet_path=str(source_parquet_path),
             output_parquet_path=str(prepared_path),
         )
@@ -235,6 +259,18 @@ def _prepare_generation_input_data(
         )
         shutil.copy2(source_parquet_path, prepared_path)
     return prepared_path
+
+
+def _limit_parquet_rows(parquet_path: Path, max_samples: Optional[int]) -> None:
+    if max_samples is None:
+        return
+    if max_samples <= 0:
+        raise ValueError(f"max_samples must be positive, got {max_samples}")
+
+    dataframe = pd.read_parquet(parquet_path)
+    limited_dataframe = dataframe.head(max_samples).copy()
+    limited_dataframe.to_parquet(parquet_path, index=False)
+    logger.info("Limited eval data to %s rows at %s", len(limited_dataframe), parquet_path)
 
 
 # def _update_training_results_file(
@@ -275,7 +311,10 @@ def run_dataobs_evaluation(
     *,
     repo_dir: Optional[str] = None,
     config_dir: Optional[str] = None,
+    eval_data_path: Optional[str] = None,
     # training_output_dir: Optional[str] = None,
+    prompt_template_method: str = "zeroshot",
+    max_samples: Optional[int] = None,
     generation_batch_size: int = 32,
     generation_temperature: float = 0.6,
     generation_seed: int = 42,
@@ -285,61 +324,69 @@ def run_dataobs_evaluation(
     ray_num_cpus: int = 48,
     shutdown_ray: bool = True,
 ) -> EvalRunResult:
-    repo_root = _repo_root(repo_dir)
-    config_root = _resolve_config_dir(repo_root, config_dir)
-    ds_cfg = _dataset_config(repo_root, data_name)
-
-    checkpt = Path(checkpoint_path).resolve()
-    if not checkpt.exists():
-        raise FileNotFoundError(f"Checkpoint not found: {checkpt}")
-    if not config_root.exists():
-        raise FileNotFoundError(f"Config directory not found: {config_root}")
-
-    n_gpus_per_node = _apply_runtime_env(gpu_id)
-
-    # Isolate outputs by eval_data_name to avoid collisions.
-    isolated_eval_dir = Path(eval_output_dir).resolve() / _safe_name(data_name)
-    generated_dir = isolated_eval_dir / "generated"
-    logs_dir = isolated_eval_dir / "logs"
-    generated_dir.mkdir(parents=True, exist_ok=True)
-    logs_dir.mkdir(parents=True, exist_ok=True)
-
-    model_path = _choose_model_path(repo_root, checkpt, base_model, isolated_eval_dir)
-
-    if ds_cfg.get("is_bfcl"):
-        raise NotImplementedError(
-            "BFCL function-path is not implemented in this runner. "
-            "Use scripts/eval_bfcl_dataobs.py if BFCL is required."
-        )
-
-    generation_output = generated_dir / "responses.parquet"
-    labeled_output = generated_dir / "responses_labeled.json"
-
-    prepared_eval_data_path = _prepare_generation_input_data(
-        dataset_name=data_name,
-        source_parquet_path=Path(ds_cfg["eval_data"]),
-        isolated_eval_dir=isolated_eval_dir,
-    )
-
-    generation_cfg = OmegaConf.load(config_root / "generation.yaml")
-    generation_cfg.model.path = str(model_path)
-    generation_cfg.model.no_chat = False
-    generation_cfg.data.path = str(prepared_eval_data_path)
-    generation_cfg.data.output_path = str(generation_output)
-    generation_cfg.data.prompt_key = "prompt"
-    generation_cfg.data.n_samples = 1
-    generation_cfg.data.batch_size = generation_batch_size
-    generation_cfg.rollout.temperature = generation_temperature
-    generation_cfg.rollout.seed = generation_seed
-    generation_cfg.rollout.prompt_length = generation_prompt_length
-    generation_cfg.rollout.response_length = generation_response_length
-    generation_cfg.rollout.gpu_memory_utilization = generation_gpu_memory_utilization
-    generation_cfg.trainer.n_gpus_per_node = n_gpus_per_node
-    generation_cfg.trainer.nnodes = 1
-    generation_cfg.trainer.device = "cuda"
-    generation_cfg.ray_init.num_cpus = ray_num_cpus
-
+    runtime_env_snapshot = _snapshot_runtime_env()
+    prepared_eval_data_path: Optional[Path] = None
     try:
+        repo_root = _repo_root(repo_dir)
+        config_root = _resolve_config_dir(repo_root, config_dir)
+        ds_cfg = _dataset_config(repo_root, data_name)
+
+        checkpt = Path(checkpoint_path).resolve()
+        if not checkpt.exists():
+            raise FileNotFoundError(f"Checkpoint not found: {checkpt}")
+        if not config_root.exists():
+            raise FileNotFoundError(f"Config directory not found: {config_root}")
+
+        n_gpus_per_node = _apply_runtime_env(gpu_id)
+
+        eval_output_root = Path(eval_output_dir).resolve()
+        eval_output_root.mkdir(parents=True, exist_ok=True)
+
+        model_path = _choose_model_path(repo_root, checkpt, base_model, eval_output_root)
+
+        # Isolate generation and evaluation artifacts by dataset name to avoid collisions.
+        isolated_eval_dir = eval_output_root / _safe_name(data_name)
+        generated_dir = isolated_eval_dir / "generated"
+        logs_dir = isolated_eval_dir / "logs"
+        generated_dir.mkdir(parents=True, exist_ok=True)
+        logs_dir.mkdir(parents=True, exist_ok=True)
+
+        if ds_cfg.get("is_bfcl"):
+            raise NotImplementedError(
+                "BFCL function-path is not implemented in this runner. "
+                "Use scripts/eval_bfcl_dataobs.py if BFCL is required."
+            )
+
+        generation_output = generated_dir / "responses.parquet"
+        labeled_output = generated_dir / "responses_labeled.json"
+
+        source_eval_data_path = Path(eval_data_path).resolve() if eval_data_path else Path(ds_cfg["eval_data"])
+        prepared_eval_data_path = _prepare_generation_input_data(
+            dataset_name=data_name,
+            prompt_template_method=prompt_template_method,
+            source_parquet_path=source_eval_data_path,
+            isolated_eval_dir=isolated_eval_dir,
+        )
+        _limit_parquet_rows(prepared_eval_data_path, max_samples=max_samples)
+
+        generation_cfg = OmegaConf.load(config_root / "generation.yaml")
+        generation_cfg.model.path = str(model_path)
+        generation_cfg.model.no_chat = False
+        generation_cfg.data.path = str(prepared_eval_data_path)
+        generation_cfg.data.output_path = str(generation_output)
+        generation_cfg.data.prompt_key = "prompt"
+        generation_cfg.data.n_samples = 1
+        generation_cfg.data.batch_size = generation_batch_size
+        generation_cfg.rollout.temperature = generation_temperature
+        generation_cfg.rollout.seed = generation_seed
+        generation_cfg.rollout.prompt_length = generation_prompt_length
+        generation_cfg.rollout.response_length = generation_response_length
+        generation_cfg.rollout.gpu_memory_utilization = generation_gpu_memory_utilization
+        generation_cfg.trainer.n_gpus_per_node = n_gpus_per_node
+        generation_cfg.trainer.nnodes = 1
+        generation_cfg.trainer.device = "cuda"
+        generation_cfg.ray_init.num_cpus = ray_num_cpus
+
         run_generation(generation_cfg)
         if not generation_output.exists():
             raise RuntimeError(f"Generation output missing: {generation_output}")
@@ -385,10 +432,103 @@ def run_dataobs_evaluation(
         )
     finally:
         try:
-            if prepared_eval_data_path.exists():
+            if prepared_eval_data_path is not None and prepared_eval_data_path.exists():
                 prepared_eval_data_path.unlink()
                 logger.info(f"Removed temporary eval data file: {prepared_eval_data_path}")
         except Exception as e:
             logger.warning(f"Failed to remove temporary eval data file {prepared_eval_data_path}: {e}")
         if shutdown_ray and ray.is_initialized():
             ray.shutdown()
+        _restore_runtime_env(runtime_env_snapshot)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Run DataObs evaluation directly from Python, with an optional smoke test profile."
+    )
+    parser.add_argument(
+        "--checkpoint-path",
+        default=None,
+        help="Checkpoint or merged model directory to evaluate. Defaults to --base-model for this smoke test.",
+    )
+    parser.add_argument(
+        "--base-model",
+        default="/data/pretrain_models/Qwen2.5-0.5B-Instruct",
+        help="Base model path used for LoRA merge or direct evaluation.",
+    )
+    parser.add_argument("--data-name", default="commonsenseqa", help="Dataset name used to select reward logic.")
+    parser.add_argument(
+        "--eval-output-dir",
+        default="/data/nas/hjw/dataobs_eval_smoke",
+        help="Directory where evaluation artifacts will be written.",
+    )
+    parser.add_argument("--gpu-id", default="1", help="CUDA_VISIBLE_DEVICES value.")
+    parser.add_argument("--repo-dir", default=None, help="Optional repo root override.")
+    parser.add_argument("--config-dir", default=None, help="Optional config directory override.")
+    parser.add_argument(
+        "--eval-data-path",
+        default=None,
+        help="Optional parquet path to evaluate. Override this to point to a custom smoke-test shard.",
+    )
+    parser.add_argument(
+        "--prompt-template-method",
+        default="zeroshot",
+        help="Prompt template method passed to apply_prompt_template.",
+    )
+    parser.add_argument(
+        "--max-samples",
+        type=int,
+        default=4,
+        help="Limit evaluation to the first N rows for smoke testing. Set to 0 to run the full eval data.",
+    )
+    parser.add_argument("--generation-batch-size", type=int, default=4, help="Generation batch size for the run.")
+    parser.add_argument(
+        "--generation-temperature",
+        type=float,
+        default=0.0,
+        help="Generation temperature. Smoke test defaults to deterministic decoding.",
+    )
+    parser.add_argument("--generation-seed", type=int, default=42, help="Generation seed.")
+    parser.add_argument("--generation-prompt-length", type=int, default=512, help="Prompt token budget.")
+    parser.add_argument("--generation-response-length", type=int, default=1024, help="Response token budget.")
+    parser.add_argument(
+        "--generation-gpu-memory-utilization",
+        type=float,
+        default=0.8,
+        help="vLLM GPU memory utilization target.",
+    )
+    parser.add_argument("--ray-num-cpus", type=int, default=48, help="Ray CPU count for the run.")
+
+    args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
+
+    checkpoint_path = args.checkpoint_path or args.base_model
+
+    max_samples = args.max_samples
+    if max_samples is not None and max_samples <= 0:
+        max_samples = None
+
+    result = run_dataobs_evaluation(
+        checkpoint_path=checkpoint_path,
+        base_model=args.base_model,
+        data_name=args.data_name,
+        eval_output_dir=args.eval_output_dir,
+        gpu_id=args.gpu_id,
+        repo_dir=args.repo_dir,
+        config_dir=args.config_dir,
+        eval_data_path=args.eval_data_path,
+        prompt_template_method=args.prompt_template_method,
+        max_samples=max_samples,
+        generation_batch_size=args.generation_batch_size,
+        generation_temperature=args.generation_temperature,
+        generation_seed=args.generation_seed,
+        generation_prompt_length=args.generation_prompt_length,
+        generation_response_length=args.generation_response_length,
+        generation_gpu_memory_utilization=args.generation_gpu_memory_utilization,
+        ray_num_cpus=args.ray_num_cpus,
+    )
+    print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
