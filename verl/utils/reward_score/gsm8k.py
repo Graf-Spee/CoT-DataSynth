@@ -25,8 +25,6 @@ def extract_solution(solution_str, method="strict"):
         year={2023}
     }
     """
-    
-    # assert method in ["strict", "flexible"]
 
     if method == "strict":
         # this also tests the formatting of the model
@@ -37,47 +35,7 @@ def extract_solution(solution_str, method="strict"):
         else:
             # take the last solution
             final_answer = solutions[-1].replace(",", "").replace("$", "").strip()
-    # elif method == "flexible":  # 41.24%    42.38%
-    #     solution_str = solution_str.replace(",", "")
-    #     answer = re.findall(r"(\-?[0-9\.\,]+)", solution_str)
-    #     final_answer = None
-    #     if len(answer) == 0:
-    #         # no reward is there is no answer
-    #         pass
-    #     else:
-    #         invalid_str = ["", "."]
-    #         # find the last number that is not '.'
-    #         for final_answer in reversed(answer):
-    #             if final_answer not in invalid_str:
-    #                 break
-
-    # elif method == 'vllm':  # weird crash, related to ast?
-    #     import ast
-    #     solution_str = solution_str.replace(",", "")
-    #     numbers = re.findall(r"\d+", solution_str)  # 取所有数字
-    #     if len(numbers) < 1:
-    #         final_answer = None
-    #     final_answer = ast.literal_eval(numbers[-1])
-    # elif method == 'vllm-naive':    # 43.67%
-    #     solution_str = solution_str.replace(",", "")
-    #     numbers = re.findall(r"\d+", solution_str)  # 取所有数字
-    #     if len(numbers) < 1:
-    #         final_answer = None
-    #     final_answer = numbers[-1]
-    # elif method == 'eleuther':      # 0%? bugged
-    #     pattern = r"(-?[$0-9.,]{2,})|(-?[0-9]+)"
-    #     answer = re.findall(pattern, solution_str)
-    #     final_answer = None
-    #     if len(answer) == 0:
-    #         # no reward is there is no answer
-    #         pass
-    #     else:
-    #         invalid_str = ["", "."]
-    #         # find the last number that is not '.'
-    #         for final_answer in reversed(answer):
-    #             if final_answer not in invalid_str:
-    #                 break
-    elif method == 'opencompass':   # 42.53%    43.67%
+    elif method == 'opencompass':
         solution_str = solution_str.replace(",", "")
         solution_str = solution_str.split('Question:')[0]           # 截断后续生成内容
         numbers = re.findall(r'\-?\d+\.\d+|\-?\d+', solution_str)
@@ -85,47 +43,6 @@ def extract_solution(solution_str, method="strict"):
             final_answer = None
         else:
             final_answer =  numbers[-1]
-    # elif method == 'modelscope':    # 0% bugged
-    #     pattern = r'(-?[0-9.,]{2,})|(-?[0-9]+)'
-    #     answer = re.findall(pattern, solution_str)
-    #     final_answer = None
-    #     if len(answer) == 0:
-    #         # no reward is there is no answer
-    #         pass
-    #     else:
-    #         invalid_str = ["", "."]
-    #         # find the last number that is not '.'
-    #         for final_answer in reversed(answer):
-    #             if final_answer not in invalid_str:
-    #                 break
-    # elif method == 'eelo':      # 42.53%    43.67%
-    #     solution_str = solution_str.replace(",", "")
-    #     pattern = r"-?\d*\.?\d+"
-    #     answer = re.findall(pattern, solution_str)
-    #     final_answer = None
-    #     if len(answer) == 0:
-    #         # no reward is there is no answer
-    #         pass
-    #     else:
-    #         invalid_str = ["", "."]
-    #         # find the last number that is not '.'
-    #         for final_answer in reversed(answer):
-    #             if final_answer not in invalid_str:
-    #                 break
-    # elif method == 'internal':  # 41.32%    42.38%
-    #     solution_str = solution_str.replace(",", "")
-    #     pattern = r"[+-]?\d[\d,]*\.?\d*"
-    #     answer = re.findall(pattern, solution_str)
-    #     final_answer = None
-    #     if len(answer) == 0:
-    #         # no reward is there is no answer
-    #         pass
-    #     else:
-    #         invalid_str = ["", "."]
-    #         # find the last number that is not '.'
-    #         for final_answer in reversed(answer):
-    #             if final_answer not in invalid_str:
-    #                 break
 
     return final_answer
 
