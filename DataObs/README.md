@@ -1,5 +1,10 @@
 # DataObs
 
+  python DataObs/tools/experiment_dashboard.py \
+    --experiments-root /data/hrh/COT/experiments \
+    --host 127.0.0.1 \
+    --port 7860
+
 `DataObs` 现在保留两类 pipeline：
 
 - `scripts/experiment_pipeline.py`: 主入口，负责 distill -> metrics -> SFT -> SFT eval -> GRPO -> GRPO eval。当前实验 recipes 都应优先走这个入口。
