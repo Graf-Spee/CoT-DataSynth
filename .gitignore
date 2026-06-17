@@ -29,6 +29,10 @@ downloads/
 eggs/
 .eggs/
 lib/
+!DataObs/lib/
+!DataObs/lib/**
+DataObs/lib/**/__pycache__/
+DataObs/lib/**/*.py[cod]
 lib64/
 parts/
 sdist/

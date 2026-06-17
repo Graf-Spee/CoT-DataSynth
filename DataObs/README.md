@@ -1,14 +1,21 @@
 # DataObs
 
-  python DataObs/tools/experiment_dashboard.py \
-    --experiments-root /data/hrh/COT/experiments \
-    --host 127.0.0.1 \
-    --port 7860
+数据观察、蒸馏、训练、评测和实验管理管线。当前框架把主链路入口、复用库和辅助工具分开维护。
 
 `DataObs` 现在保留两类 pipeline：
 
 - `scripts/experiment_pipeline.py`: 主入口，负责 distill -> metrics -> SFT -> SFT eval -> GRPO -> GRPO eval。当前实验 recipes 都应优先走这个入口。
 - `scripts/data_obs_pipeline.py`: 数据指标/分 split/相关性分析入口，主要被 `experiment_pipeline.py` 的 `metrics` stage 调用。
+- `lib/evaluation/dataobs_eval_runner.py`: Python-native eval runner，支持 dataset-specific prompt template、custom eval data path 和 smoke-test row limit。
+
+## Dashboard
+
+```bash
+python DataObs/tools/experiment_dashboard.py \
+  --experiments-root /data/hrh/COT/experiments \
+  --host 127.0.0.1 \
+  --port 7860
+```
 
 ## Directory Layout
 

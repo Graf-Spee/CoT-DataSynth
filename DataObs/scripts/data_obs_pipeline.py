@@ -1,6 +1,9 @@
 """
 DataObs Pipeline: End-to-end data analysis workflow
 Splits dataset, computes metrics, trains models, and analyzes correlations
+
+Deprecated: use scripts/data_obs_pipeline_test.py instead. This file is kept
+temporarily until the replacement pipeline has been fully validated.
 """
 
 import argparse
@@ -62,6 +65,11 @@ def load_data(data_path: str) -> List[dict]:
 
 
 def main():
+    logger.warning(
+        "DataObs/scripts/data_obs_pipeline.py is deprecated. "
+        "Use DataObs/scripts/data_obs_pipeline_test.py instead."
+    )
+
     parser = argparse.ArgumentParser(
         description='DataObs Pipeline: Data analysis and training workflow'
     )
@@ -71,14 +79,15 @@ def main():
     parser.add_argument('--output_dir', required=True, help='Output directory for experiment')
     parser.add_argument('--splits_dir', default=None, help='Path to existing splits directory (use with --skip_split)')
     parser.add_argument('--train_script', default='DataObs/lib/training/sft_dataobs.sh', help='Training script path')
-    parser.add_argument('--eval_script', default='DataObs/lib/evaluation/eval_dataobs.sh', help='Evaluation script path')
-    parser.add_argument('--eval_data_path', default='/data/open_datasets/GSM8K/test.parquet', 
-                        help='Path to eval dataset (parquet)')
+    parser.add_argument('--val_data_path', default='/data/open_datasets/GSM8K/test.parquet', help='Path to val dataset (parquet)')
+    parser.add_argument('--eval_data_name', default='gsm8k', help='Name of evaluation dataset')
+    parser.add_argument('--prompt_template_method', default='zeroshot', help='Prompt template method for evaluation data preparation')
     
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--gpu_ids', default='0,1,2,3,4,5,6,7', help='Available GPU IDs (comma-separated)')
     parser.add_argument('--gpus_per_split', type=int, default=1, help='GPUs per training split')
-    parser.add_argument('--parallel', action='store_true', help='Run the pipeline with parallel training / evaluation')
+    parser.add_argument('--num_epochs', type=int, default=15, help='Number of training epochs per split')
+    parser.add_argument('--parallel', action='store_true', help='Deprecated. Parallel pipeline is no longer used')
     
     parser.add_argument('--n_splits', type=int, default=10, help='Number of data splits')
     parser.add_argument('--similarity_type', default='jaccard',
@@ -100,6 +109,9 @@ def main():
     parser.add_argument('--only_evaluation', action='store_true', help='Only Conduct separate evaluation phase')
 
     args = parser.parse_args()
+
+    if args.parallel:
+        logger.warning("--parallel is deprecated and ignored. Running sequential TrainingPipeline.")
 
     # Setup paths
     output_dir = Path(args.output_dir)
@@ -270,11 +282,7 @@ def main():
 
         gpu_allocations = allocator.allocate(args.n_splits)
 
-        # Setup training pipeline
-        if args.parallel:
-            training_pipeline = TrainingPipelineParallel(str(output_dir), cot_datasynth_dir)
-        else:
-            training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
+        training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
 
         # Prepare training configs
         base_config = {}
@@ -295,8 +303,10 @@ def main():
             args.train_script,
             parallel=False,
             timeout=None,
-            eval_script_path=args.eval_script if Path(f"{cot_datasynth_dir}/{args.eval_script}").exists() else None,
-            eval_data_path=args.eval_data_path if Path(args.eval_data_path).exists() else None
+            val_data_path=args.val_data_path,
+            eval_data_name=args.eval_data_name,
+            prompt_template_method=args.prompt_template_method,
+            num_epochs=args.num_epochs,
         )
 
         logger.info(f"Training results: {results}")
@@ -307,46 +317,35 @@ def main():
         logger.info("Phase 3.5: Evaluation on Test Set")
         logger.info("=" * 50)
 
-        if args.parallel:
-            training_pipeline = TrainingPipelineParallel(str(output_dir), cot_datasynth_dir)
-        else:
-            training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
+        training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
         
-        eval_script_full_path = Path(cot_datasynth_dir) / args.eval_script
-        if not eval_script_full_path.exists():
-            logger.error(f"Evaluation script not found: {eval_script_full_path}")
-        elif not Path(args.eval_data_path).exists():
-            logger.error(f"Evaluation data not found: {args.eval_data_path}")
-        else:
-            # 使用 GPU 分配器分配 GPU
-            gpu_ids = [int(g) for g in args.gpu_ids.split(',')]
-            allocator = GPUAllocator(gpu_ids, args.gpus_per_split)
-            gpu_allocations = allocator.allocate(args.n_splits)
+        gpu_ids = [int(g) for g in args.gpu_ids.split(',')]
+        allocator = GPUAllocator(gpu_ids, args.gpus_per_split)
+        gpu_allocations = allocator.allocate(args.n_splits)
 
-            logger.info(f"Running evaluation for {args.n_splits} splits...")
-            logger.info(f"GPU allocations: {gpu_allocations}")
+        logger.info(f"Running evaluation for {args.n_splits} splits...")
+        logger.info(f"GPU allocations: {gpu_allocations}")
 
-            for split_id in range(args.n_splits):
-                split_output_dir = training_pipeline.training_dir / f"split_{split_id}"
-                if split_output_dir.exists():
-                    # 获取分配的 GPU
-                    gpu_id = gpu_allocations[split_id] if gpu_allocations[split_id] else [0]
-                    logger.info(f"Evaluating split {split_id} on GPU {gpu_id}...")
+        for split_id in range(args.n_splits):
+            split_output_dir = training_pipeline.training_dir / f"split_{split_id}"
+            if split_output_dir.exists():
+                gpu_id = gpu_allocations[split_id] if gpu_allocations[split_id] else [0]
+                logger.info(f"Evaluating split {split_id} on GPU {gpu_id}...")
 
-                    config = {
-                        'output_dir': str(split_output_dir),
-                        'eval_output_dir': str(training_pipeline.eval_dir / f"split_{split_id}"),
-                        'gpu_ids': gpu_id,
-                        'base_model_id': args.model_id,
-                    }
+                config = {
+                    'output_dir': str(split_output_dir),
+                    'eval_output_dir': str(training_pipeline.eval_dir / f"split_{split_id}"),
+                    'gpu_ids': gpu_id,
+                    'base_model_id': args.model_id,
+                }
 
-                    training_pipeline.run_evaluation(
-                        config,
-                        args.eval_script,
-                        args.eval_data_path
-                    )
-                else:
-                    logger.warning(f"Split {split_id} output directory not found: {split_output_dir}")
+                training_pipeline.run_evaluation(
+                    config,
+                    args.eval_data_name,
+                    prompt_template_method=args.prompt_template_method,
+                )
+            else:
+                logger.warning(f"Split {split_id} output directory not found: {split_output_dir}")
 
     # Phase 4: Analysis
     if not args.skip_analysis and not args.only_evaluation:
@@ -380,10 +379,7 @@ def main():
 
         # 确保 training_pipeline 已初始化 (如果跳过了训练)
         if args.skip_training:
-            if args.parallel:
-                training_pipeline = TrainingPipelineParallel(str(output_dir), cot_datasynth_dir)
-            else:
-                training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
+            training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
 
         training_results = training_pipeline.collect_training_results(
             args.n_splits,

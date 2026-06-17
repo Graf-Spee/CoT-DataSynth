@@ -89,8 +89,8 @@ def compute_pass_at_n(is_correct_per_response, data_sources, max_n=None, num_boo
                 pass_means.append(np.mean(passes))
             
             if pass_means:
-                results[ds][f"pass@{n}/mean"] = np.mean(pass_means)
-                results[ds][f"pass@{n}/std"] = np.std(pass_means)
+                results[ds][f"pass@{n}/mean"] = float(np.mean(pass_means))
+                results[ds][f"pass@{n}/std"] = float(np.std(pass_means))
     
     return results
 
@@ -111,11 +111,11 @@ def compute_acc_avg_per_source(data_source_reward, data_sources, is_correct_per_
         rewards = data_source_reward[data_source]
         correctness_arr = np.array(ds_to_correctness[data_source]).flatten()
         bools, bools_count = np.unique(correctness_arr, return_counts=True)
-        correct = bools_count[bools.tolist().index(True)] if True in bools else 0
-        count = np.sum(bools_count)
-        accuracy = correct / count * 100  # 转换为百分比
+        correct = int(bools_count[bools.tolist().index(True)]) if True in bools else 0
+        count = int(np.sum(bools_count))
+        accuracy = float(correct / count * 100)  # 转换为百分比
         
-        results[data_source]["test_score"] = np.mean(rewards)
+        results[data_source]["test_score"] = float(np.mean(rewards))
         results[data_source]["accuracy"] = accuracy
         results[data_source]["correct"] = correct
         results[data_source]["total"] = count
@@ -127,10 +127,10 @@ def compute_acc_avg_per_source(data_source_reward, data_sources, is_correct_per_
     if len(data_source_reward) > 1:
         results['overall'] = {}
 
-        overall_accuracy = (total_correct / total_samples * 100) if total_samples > 0 else 0
+        overall_accuracy = float(total_correct / total_samples * 100) if total_samples > 0 else 0.0
         results['overall']["accuracy"] = overall_accuracy
-        results['overall']["correct"] = total_correct
-        results['overall']["total"] = total_samples
+        results['overall']["correct"] = int(total_correct)
+        results['overall']["total"] = int(total_samples)
 
     return results
 

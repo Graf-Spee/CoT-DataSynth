@@ -71,22 +71,27 @@ def main():
     parser.add_argument('--output_dir', required=True, help='Output directory for experiment')
     parser.add_argument('--splits_dir', default=None, help='Path to existing splits directory (use with --skip_split)')
     parser.add_argument('--train_script', default='DataObs/lib/training/sft_dataobs.sh', help='Training script path')
-    parser.add_argument('--eval_script', default='DataObs/lib/evaluation/eval_dataobs.sh', help='Evaluation script path')
     parser.add_argument('--val_data_path', default='/data/open_datasets/MATH-500/test-processed.parquet', help='Path to val dataset (parquet)')
     parser.add_argument('--eval_data_name', default='MATH-500', help='Name of evaluation dataset')
+    parser.add_argument('--prompt_template_method', default='zeroshot', help='Prompt template method for evaluation data preparation')
     
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--gpu_ids', default='0,1,2,3,4,5,6,7', help='Available GPU IDs (comma-separated)')
     parser.add_argument('--gpus_per_split', type=int, default=1, help='GPUs per training split')
     parser.add_argument('--num_epochs', type=int, default=2, help='Number of training epochs per split')
-    parser.add_argument('--parallel', action='store_true', help='Run the pipeline with parallel training / evaluation')
-    parser.add_argument('--estimated_vram_mb', type=int, default=30000, help='Estimated GPU memory cost in megabytes')
+    parser.add_argument('--parallel', action='store_true', help='Deprecated. Parallel pipeline is no longer used')
     
     parser.add_argument('--n_splits', type=int, default=10, help='Number of data splits')
     parser.add_argument('--similarity_type', default='jaccard',
                         help='Similarity type for diversity: jaccard, levenshtein, cosine, jaro_winkler, ngram, bertouch, bleu, rouge')
     parser.add_argument('--compute_on', default='both', choices=['prompt', 'answer', 'both'], help='What to compute diversity on')
     parser.add_argument('--model', default=None, help='Model for PPL and IFD computation')
+    parser.add_argument('--ppl_ifd_sample_ratio', type=float, default=0.01,
+                        help='Sampling ratio for PPL/IFD (default: 0.01). Use 1.0 for full.')
+    parser.add_argument('--ppl_ifd_max_samples', type=int, default=None,
+                        help='Optional hard cap for PPL/IFD sample size (overrides ratio)')
+    parser.add_argument('--ppl_ifd_sample_seed', type=int, default=42,
+                        help='Random seed for PPL/IFD sampling')
     
     parser.add_argument('--skip_split', action='store_true', help='Skip data splitting (use existing splits)')
     parser.add_argument('--skip_metrics', action='store_true', help='Skip metric computation')
@@ -96,6 +101,9 @@ def main():
     parser.add_argument('--only_evaluation', action='store_true', help='Only Conduct separate evaluation phase')
 
     args = parser.parse_args()
+
+    if args.parallel:
+        logger.warning("--parallel is deprecated and ignored. Running sequential TrainingPipeline.")
 
     # Setup paths
     output_dir = Path(args.output_dir)
@@ -196,7 +204,13 @@ def main():
             if args.model:
                 logger.info(f"Split {split_id}: computing PPL with {args.model}...")
                 try:
-                    metrics.update(compute_ppl_metrics(split_data, model_name=args.model))
+                    metrics.update(compute_ppl_metrics(
+                        split_data,
+                        model_name=args.model,
+                        sample_ratio=args.ppl_ifd_sample_ratio,
+                        max_samples=args.ppl_ifd_max_samples,
+                        random_seed=args.ppl_ifd_sample_seed,
+                    ))
                 except Exception as e:
                     logger.warning(f"Failed to compute PPL: {e}")
 
@@ -204,7 +218,13 @@ def main():
             if args.model:
                 logger.info(f"Split {split_id}: computing IFD with {args.model}...")
                 try:
-                    metrics.update(compute_ifd_metrics(split_data, model_name=args.model))
+                    metrics.update(compute_ifd_metrics(
+                        split_data,
+                        model_name=args.model,
+                        sample_ratio=args.ppl_ifd_sample_ratio,
+                        max_samples=args.ppl_ifd_max_samples,
+                        random_seed=args.ppl_ifd_sample_seed,
+                    ))
                 except Exception as e:
                     logger.warning(f"Failed to compute IFD: {e}")
 
@@ -238,9 +258,8 @@ def main():
 
         # Setup GPU allocation
         gpu_ids = [int(g) for g in args.gpu_ids.split(',')]
-        if not args.parallel:
-            allocator = GPUAllocator(gpu_ids, args.gpus_per_split)
-            gpu_allocations = allocator.allocate(args.n_splits)
+        allocator = GPUAllocator(gpu_ids, args.gpus_per_split)
+        gpu_allocations = allocator.allocate(args.n_splits)
 
         # 如果有 --splits_dir，自动检测 splits 数量
         if args.splits_dir:
@@ -256,57 +275,32 @@ def main():
 
         
 
-        # Setup training pipeline
-        if args.parallel:
-            training_pipeline = TrainingPipelineParallel(str(output_dir), cot_datasynth_dir)
-        else:
-            training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
+        training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
 
         # Prepare training configs
         base_config = {}
 
-        if args.parallel:
-            configs = training_pipeline.prepare_training_configs(
-                str(splits_dir),
-                base_config,
-                args.n_splits,
-                args.model_id,
-                args.estimated_vram_mb
-            )
-        else:
-            configs = training_pipeline.prepare_training_configs(
-                str(splits_dir),
-                gpu_allocations,
-                base_config,
-                args.n_splits,
-                args.model_id
-            )
+        configs = training_pipeline.prepare_training_configs(
+            str(splits_dir),
+            gpu_allocations,
+            base_config,
+            args.n_splits,
+            args.model_id
+        )
 
         # Run trainings
         logger.info(f"Running {len(configs)} trainings...")
 
-        if args.parallel:
-            results = training_pipeline.run_all_trainings(
-                configs,
-                args.train_script,
-                val_data_path=args.val_data_path,
-                eval_script_path=args.eval_script if Path(f"{cot_datasynth_dir}/{args.eval_script}").exists() else None,
-                eval_data_name=args.eval_data_name,
-                gpu_pool=gpu_ids,
-                poll_interval=300,
-                num_epochs=args.num_epochs
-            )
-        else:
-            results = training_pipeline.run_all_trainings(
-                configs,
-                args.train_script,
-                parallel=False,
-                timeout=None,
-                val_data_path=args.val_data_path,
-                eval_script_path=args.eval_script if Path(f"{cot_datasynth_dir}/{args.eval_script}").exists() else None,
-                eval_data_name=args.eval_data_name,
-                num_epochs=args.num_epochs
-            )
+        results = training_pipeline.run_all_trainings(
+            configs,
+            args.train_script,
+            parallel=False,
+            timeout=None,
+            val_data_path=args.val_data_path,
+            eval_data_name=args.eval_data_name,
+            prompt_template_method=args.prompt_template_method,
+            num_epochs=args.num_epochs
+        )
 
         logger.info(f"Training results: {results}")
 
@@ -318,154 +312,125 @@ def main():
 
         training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
         
-        eval_script_full_path = Path(cot_datasynth_dir) / args.eval_script
-        if not eval_script_full_path.exists():
-            logger.error(f"Evaluation script not found: {eval_script_full_path}")
+        gpu_ids = [int(g) for g in args.gpu_ids.split(',')]
+        allocator = GPUAllocator(gpu_ids, args.gpus_per_split)
+        gpu_allocations = allocator.allocate(args.n_splits)
+        eval_summary_rows = []
+
+        logger.info(f"Running evaluation for {args.n_splits} splits...")
+        logger.info(f"GPU allocations: {gpu_allocations}")
+
+        for split_id in range(args.n_splits):
+            split_output_dir = training_pipeline.training_dir / f"split_{split_id}"
+            if split_output_dir.exists():
+                gpu_id = gpu_allocations[split_id] if gpu_allocations[split_id] else [0]
+                logger.info(f"Evaluating split {split_id} on GPU {gpu_id}...")
+
+                config = {
+                    'output_dir': str(split_output_dir),
+                    'eval_output_dir': str(training_pipeline.eval_dir / f"split_{split_id}"),
+                    'gpu_ids': gpu_id,
+                    'base_model_id': args.model_id,
+                }
+
+                eval_success = training_pipeline.run_evaluation(
+                    config,
+                    args.eval_data_name,
+                    prompt_template_method=args.prompt_template_method,
+                )
+
+                split_accuracy = None
+                results_file = split_output_dir / "training_results.json"
+                if results_file.exists():
+                    try:
+                        with open(results_file, 'r', encoding='utf-8') as f:
+                            split_results = json.load(f)
+                        split_accuracy = split_results.get("test_accuracy")
+                    except Exception as e:
+                        logger.warning(f"Failed to read {results_file}: {e}")
+
+                eval_summary_rows.append({
+                    "eval_data_name": args.eval_data_name,
+                    "split_id": split_id,
+                    "accuracy": split_accuracy,
+                    "eval_success": bool(eval_success),
+                })
+            else:
+                logger.warning(f"Split {split_id} output directory not found: {split_output_dir}")
+                eval_summary_rows.append({
+                    "eval_data_name": args.eval_data_name,
+                    "split_id": split_id,
+                    "accuracy": None,
+                    "eval_success": False,
+                })
+
+        eval_summary_path = output_dir / "evaluation_split_accuracy.csv"
+
+        split_accuracy_map = {
+            int(row["split_id"]): row.get("accuracy")
+            for row in eval_summary_rows
+        }
+
+        detected_split_ids = set()
+        for split_dir in training_pipeline.training_dir.glob("split_*"):
+            try:
+                detected_split_ids.add(int(split_dir.name.split("_")[1]))
+            except (IndexError, ValueError):
+                continue
+        if not detected_split_ids:
+            detected_split_ids = set(split_accuracy_map.keys())
+
+        current_max_split = max(detected_split_ids) if detected_split_ids else -1
+        current_row = {"dataset_name": args.eval_data_name}
+        for split_id in range(current_max_split + 1):
+            current_row[f"split_{split_id}"] = split_accuracy_map.get(split_id)
+
+        current_values = [
+            value for value in current_row.values()
+            if isinstance(value, (int, float))
+        ]
+        if current_values:
+            current_avg = float(sum(current_values) / len(current_values))
+            current_var = float(sum((v - current_avg) ** 2 for v in current_values) / len(current_values))
         else:
-            # 使用 GPU 分配器分配 GPU
-            gpu_ids = [int(g) for g in args.gpu_ids.split(',')]
-            allocator = GPUAllocator(gpu_ids, args.gpus_per_split)
-            gpu_allocations = allocator.allocate(args.n_splits)
-            eval_summary_rows = []
+            current_avg = None
+            current_var = None
+        current_row["avg"] = current_avg
+        current_row["var"] = current_var
 
-            logger.info(f"Running evaluation for {args.n_splits} splits...")
-            logger.info(f"GPU allocations: {gpu_allocations}")
+        new_df = pd.DataFrame([current_row])
 
-            for split_id in range(args.n_splits):
-                split_output_dir = training_pipeline.training_dir / f"split_{split_id}"
-                if split_output_dir.exists():
-                    # 获取分配的 GPU
-                    gpu_id = gpu_allocations[split_id] if gpu_allocations[split_id] else [0]
-                    logger.info(f"Evaluating split {split_id} on GPU {gpu_id}...")
+        if eval_summary_path.exists():
+            existing_df = pd.read_csv(eval_summary_path)
 
-                    config = {
-                        'output_dir': str(split_output_dir),
-                        'eval_output_dir': str(training_pipeline.eval_dir / f"split_{split_id}"),
-                        'gpu_ids': gpu_id,
-                        'base_model_id': args.model_id,
-                    }
-
-                    eval_success = training_pipeline.run_evaluation(
-                        config,
-                        args.eval_script,
-                        args.eval_data_name
-                    )
-
-                    split_accuracy = None
-                    results_file = split_output_dir / "training_results.json"
-                    if results_file.exists():
-                        try:
-                            with open(results_file, 'r', encoding='utf-8') as f:
-                                split_results = json.load(f)
-                            split_accuracy = split_results.get("test_accuracy")
-                        except Exception as e:
-                            logger.warning(f"Failed to read {results_file}: {e}")
-
-                    eval_summary_rows.append({
-                        "eval_data_name": args.eval_data_name,
-                        "split_id": split_id,
-                        "accuracy": split_accuracy,
-                        "eval_success": bool(eval_success),
-                    })
-                else:
-                    logger.warning(f"Split {split_id} output directory not found: {split_output_dir}")
-                    eval_summary_rows.append({
-                        "eval_data_name": args.eval_data_name,
-                        "split_id": split_id,
-                        "accuracy": None,
-                        "eval_success": False,
-                    })
-
-            eval_summary_path = output_dir / "evaluation_split_accuracy.csv"
-
-            split_accuracy_map = {
-                int(row["split_id"]): row.get("accuracy")
-                for row in eval_summary_rows
-            }
-
-            detected_split_ids = set()
-            for split_dir in training_pipeline.training_dir.glob("split_*"):
-                try:
-                    detected_split_ids.add(int(split_dir.name.split("_")[1]))
-                except (IndexError, ValueError):
-                    continue
-            if not detected_split_ids:
-                detected_split_ids = set(split_accuracy_map.keys())
-
-            current_max_split = max(detected_split_ids) if detected_split_ids else -1
-            current_row = {"dataset_name": args.eval_data_name}
-            for split_id in range(current_max_split + 1):
-                current_row[f"split_{split_id}"] = split_accuracy_map.get(split_id)
-
-            current_values = [
-                value for value in current_row.values()
-                if isinstance(value, (int, float))
+            existing_split_cols = [
+                c for c in existing_df.columns
+                if c.startswith("split_") and c.split("_")[-1].isdigit()
             ]
-            if current_values:
-                current_avg = float(sum(current_values) / len(current_values))
-                current_var = float(sum((v - current_avg) ** 2 for v in current_values) / len(current_values))
-            else:
-                current_avg = None
-                current_var = None
-            current_row["avg"] = current_avg
-            current_row["var"] = current_var
+            existing_max_split = (
+                max(int(c.split("_")[1]) for c in existing_split_cols)
+                if existing_split_cols else -1
+            )
+            final_max_split = max(existing_max_split, current_max_split)
+            final_columns = (
+                ["dataset_name"]
+                + [f"split_{i}" for i in range(final_max_split + 1)]
+                + ["avg", "var"]
+            )
 
-            new_df = pd.DataFrame([current_row])
+            existing_df = existing_df.reindex(columns=final_columns)
+            new_df = new_df.reindex(columns=final_columns)
+            merged_df = pd.concat([existing_df, new_df], ignore_index=True)
+        else:
+            final_columns = (
+                ["dataset_name"]
+                + [f"split_{i}" for i in range(current_max_split + 1)]
+                + ["avg", "var"]
+            )
+            merged_df = new_df.reindex(columns=final_columns)
 
-            if eval_summary_path.exists():
-                existing_df = pd.read_csv(eval_summary_path)
-
-                # Backward compatibility for old long format:
-                # eval_data_name, split_id, accuracy, eval_success
-                if "dataset_name" not in existing_df.columns and "eval_data_name" in existing_df.columns:
-                    existing_df = existing_df.rename(columns={"eval_data_name": "dataset_name"})
-                if "split_id" in existing_df.columns and "accuracy" in existing_df.columns:
-                    converted_rows = []
-                    for _, row in existing_df.iterrows():
-                        converted = {"dataset_name": row.get("dataset_name")}
-                        try:
-                            sid = int(row.get("split_id"))
-                            converted[f"split_{sid}"] = row.get("accuracy")
-                        except (TypeError, ValueError):
-                            pass
-                        acc = row.get("accuracy")
-                        if isinstance(acc, (int, float)):
-                            converted["avg"] = float(acc)
-                            converted["var"] = 0.0
-                        else:
-                            converted["avg"] = None
-                            converted["var"] = None
-                        converted_rows.append(converted)
-                    existing_df = pd.DataFrame(converted_rows)
-
-                existing_split_cols = [
-                    c for c in existing_df.columns
-                    if c.startswith("split_") and c.split("_")[-1].isdigit()
-                ]
-                existing_max_split = (
-                    max(int(c.split("_")[1]) for c in existing_split_cols)
-                    if existing_split_cols else -1
-                )
-                final_max_split = max(existing_max_split, current_max_split)
-                final_columns = (
-                    ["dataset_name"]
-                    + [f"split_{i}" for i in range(final_max_split + 1)]
-                    + ["avg", "var"]
-                )
-
-                existing_df = existing_df.reindex(columns=final_columns)
-                new_df = new_df.reindex(columns=final_columns)
-                merged_df = pd.concat([existing_df, new_df], ignore_index=True)
-            else:
-                final_columns = (
-                    ["dataset_name"]
-                    + [f"split_{i}" for i in range(current_max_split + 1)]
-                    + ["avg", "var"]
-                )
-                merged_df = new_df.reindex(columns=final_columns)
-
-            merged_df.to_csv(eval_summary_path, index=False)
-            logger.info(f"Saved split evaluation summary to {eval_summary_path}")
+        merged_df.to_csv(eval_summary_path, index=False)
+        logger.info(f"Saved split evaluation summary to {eval_summary_path}")
 
     # Phase 4: Analysis
     if not args.skip_analysis and not args.only_evaluation:
