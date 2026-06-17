@@ -26,6 +26,9 @@ def compute_score_router(data_source, solution_str, ground_truth, extra_info=Non
     elif data_source in ["strategyQA"]:
         from verl.utils.reward_score import truefalse
         res = truefalse.compute_score(solution_str, ground_truth)
+    elif data_source in ["mbpp", "mbppplus", "humaneval", "humanevalplus"]:
+        from verl.utils.reward_score import mbpp
+        res = mbpp.compute_score(solution_str, ground_truth)
     else:
         raise NotImplementedError(f"Reward function is not implemented for {data_source=}")
 

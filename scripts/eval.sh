@@ -9,6 +9,8 @@
 if [ -z "$CONFIG_DIR" ]; then
     CONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/config"
 fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EVAL_REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 CONFIG_FILE="${CONFIG_FILE:-${CONFIG_DIR}/bash_config.env}"
 
@@ -103,7 +105,7 @@ shopt -s nocasematch    # Enable caseless match
 case $DATASET in
     "ai2_arc" | "ai2-arc" | "arc-challenge")
         DATA_NAME="arc-challenge"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/multiple_choice.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/multiple_choice.py"
         EVAL_DATA="/data/open_datasets/ai2_arc/ARC-Challenge/test-processed.parquet"
         
         PROMPT_KEY="prompt"              # Question
@@ -114,7 +116,7 @@ case $DATASET in
         ;;
     "aqua_rat" | "aqua-rat")
         DATA_NAME="aqua_rat"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/multiple_choice.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/multiple_choice.py"
         EVAL_DATA="/data/open_datasets/aqua_rat/processed/test-processed.parquet"
         
         PROMPT_KEY="prompt"              # Question
@@ -125,7 +127,7 @@ case $DATASET in
         ;;
     "commonsenseQA")
         DATA_NAME="commonsenseQA"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/multiple_choice.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/multiple_choice.py"
         EVAL_DATA="/data/open_datasets/CommonsenseQA/data/validation-processed.parquet"
         
         PROMPT_KEY="prompt"              # Question
@@ -136,7 +138,7 @@ case $DATASET in
         ;;
     "gsm8k")
         DATA_NAME="gsm8k"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/gsm8k.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/gsm8k.py"
         EVAL_DATA="/data/open_datasets/GSM8K/test.parquet"
 
         PROMPT_KEY="prompt"              # Question
@@ -147,7 +149,7 @@ case $DATASET in
         ;;
     "livecodebench")
         DATA_NAME="livecodebench"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/livecodebench.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/livecodebench.py"
         EVAL_DATA="/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet"
 
         PROMPT_KEY="prompt"              # Question
@@ -160,7 +162,7 @@ case $DATASET in
         ;;
     "humaneval")
         DATA_NAME="humaneval"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/mbpp.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/mbpp.py"
         EVAL_DATA="/data/open_datasets/humaneval/openai_humaneval/processed/test.parquet"
 
         PROMPT_KEY="prompt"              # Question
@@ -173,7 +175,7 @@ case $DATASET in
         ;;
     "humanevalplus" | "human-eval-plus")
         DATA_NAME="humanevalplus"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/mbpp.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/mbpp.py"
         EVAL_DATA="/data/open_datasets/humanevalplus/processed/test.parquet"
 
         PROMPT_KEY="prompt"              # Question
@@ -186,7 +188,7 @@ case $DATASET in
         ;;
     "math")
         DATA_NAME="math"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/math_verify.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/math_verify.py"
         EVAL_DATA="/data/open_datasets/MATH/train_processed.parquet"
 
         PROMPT_KEY="prompt"              # Question
@@ -197,7 +199,7 @@ case $DATASET in
         ;;
     "math-500")
         DATA_NAME="math-500"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/math_verify.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/math_verify.py"
         EVAL_DATA="/data/open_datasets/MATH-500/test-processed.parquet"
 
         PROMPT_KEY="prompt"              # Question
@@ -208,7 +210,7 @@ case $DATASET in
         ;;
     "mbpp")
         DATA_NAME="mbpp"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/mbpp.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/mbpp.py"
         EVAL_DATA="/data/open_datasets/mbpp/sanitized/processed/test.parquet"
 
         PROMPT_KEY="prompt"              # Question
@@ -221,7 +223,7 @@ case $DATASET in
         ;;
     "mbppplus" | "mbpp-plus")
         DATA_NAME="mbppplus"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/mbpp.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/mbpp.py"
         EVAL_DATA="/data/open_datasets/mbppplus/processed/test.parquet"
 
         PROMPT_KEY="prompt"              # Question
@@ -234,7 +236,7 @@ case $DATASET in
         ;;
     "numinamath" | "numinamath-CoT")
         DATA_NAME="numinamath"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/math_verify.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/math_verify.py"
         EVAL_DATA="/data/open_datasets/NuminaMath-CoT/test-processed.parquet"
 
         PROMPT_KEY="prompt"              # Question
@@ -245,7 +247,7 @@ case $DATASET in
         ;;
     "strategyQA")
         DATA_NAME="strategyQA"
-        REWARD_FUNCTION_PATH=$(realpath "../verl/utils/reward_score/truefalse.py")
+        REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/truefalse.py"
         EVAL_DATA="/data/open_datasets/StrategyQA/data/test-processed.parquet"
 
         PROMPT_KEY="prompt"              # Question
@@ -267,6 +269,12 @@ case $DATASET in
         ;;
 esac
 shopt -u nocasematch    # Disable caseless match
+
+if [ "$IS_BFCL" != "1" ] && [ ! -f "$REWARD_FUNCTION_PATH" ]; then
+    echo "[ERROR] Reward function file not found: $REWARD_FUNCTION_PATH"
+    echo "[ERROR] Eval repo dir: $EVAL_REPO_DIR"
+    exit 1
+fi
 
 gpu_ids=$1
 shift 1
@@ -321,7 +329,11 @@ elif [ "$SKIP_GEN" = "1" ]; then
         EVAL_OUTPUT_DIR=$(find_latest_eval_dir) || exit 1
     fi
 else
-    EVAL_OUTPUT_DIR="${PROJECT_DIR}/evals/${MODEL_NAME}--${DATA_NAME}--eval--$(date +%m%d-%H%M%S)"
+    if [ -n "$TARGET_EVAL_DIR" ]; then
+        EVAL_OUTPUT_DIR=${TARGET_EVAL_DIR}
+    else
+        EVAL_OUTPUT_DIR="${PROJECT_DIR}/evals/${MODEL_NAME}--${DATA_NAME}--eval--$(date +%m%d-%H%M%S)"
+    fi
     mkdir -p ${EVAL_OUTPUT_DIR}/{generated,logs}
 fi
 
@@ -336,7 +348,7 @@ if [ ! "$MODEL_PATH" = "$BASE_MODEL" ] && [ -f "$MODEL_PATH/adapter_model.safete
     else
         echo "[INFO] Detected LoRA adapter, merging with base model: $BASE_MODEL"
 
-        MERGE_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/lora_model_merge/merge_lora_qwen.py"
+        MERGE_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/DataObs/lib/model_ops/merge_lora_qwen.py"
         python3 ${MERGE_SCRIPT} \
             --base ${BASE_MODEL} \
             --lora ${MODEL_PATH} \
