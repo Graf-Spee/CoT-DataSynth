@@ -1,9 +1,6 @@
 """
 DataObs Pipeline: End-to-end data analysis workflow
 Splits dataset, computes metrics, trains models, and analyzes correlations
-
-Deprecated: use scripts/data_obs_pipeline_test.py instead. This file is kept
-temporarily until the replacement pipeline has been fully validated.
 """
 
 import argparse
@@ -65,28 +62,23 @@ def load_data(data_path: str) -> List[dict]:
 
 
 def main():
-    logger.warning(
-        "DataObs/scripts/data_obs_pipeline.py is deprecated. "
-        "Use DataObs/scripts/data_obs_pipeline_test.py instead."
-    )
-
     parser = argparse.ArgumentParser(
         description='DataObs Pipeline: Data analysis and training workflow'
     )
     parser.add_argument('--data_path', required=True, help='Path to dataset (parquet/jsonl/json)')
-    parser.add_argument('--data_name', default='GSM8K', help='Dataset name for output subdirectory')
+    parser.add_argument('--data_name', default='MATH-CoT', help='Dataset name for output subdirectory')
     parser.add_argument('--model_id', required=True, help='Model ID for training')
     parser.add_argument('--output_dir', required=True, help='Output directory for experiment')
     parser.add_argument('--splits_dir', default=None, help='Path to existing splits directory (use with --skip_split)')
     parser.add_argument('--train_script', default='DataObs/lib/training/sft_dataobs.sh', help='Training script path')
-    parser.add_argument('--val_data_path', default='/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet', help='Path to val dataset (parquet)')
-    parser.add_argument('--eval_data_name', default='gsm8k', help='Name of evaluation dataset')
+    parser.add_argument('--val_data_path', default='/data/open_datasets/MATH-500/test-processed.parquet', help='Path to val dataset (parquet)')
+    parser.add_argument('--eval_data_name', default='MATH-500', help='Name of evaluation dataset')
     parser.add_argument('--prompt_template_method', default='zeroshot', help='Prompt template method for evaluation data preparation')
     
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--gpu_ids', default='0,1,2,3,4,5,6,7', help='Available GPU IDs (comma-separated)')
     parser.add_argument('--gpus_per_split', type=int, default=1, help='GPUs per training split')
-    parser.add_argument('--num_epochs', type=int, default=15, help='Number of training epochs per split')
+    parser.add_argument('--num_epochs', type=int, default=2, help='Number of training epochs per split')
     parser.add_argument('--parallel', action='store_true', help='Deprecated. Parallel pipeline is no longer used')
     
     parser.add_argument('--n_splits', type=int, default=10, help='Number of data splits')
@@ -267,6 +259,7 @@ def main():
         # Setup GPU allocation
         gpu_ids = [int(g) for g in args.gpu_ids.split(',')]
         allocator = GPUAllocator(gpu_ids, args.gpus_per_split)
+        gpu_allocations = allocator.allocate(args.n_splits)
 
         # 如果有 --splits_dir，自动检测 splits 数量
         if args.splits_dir:
@@ -280,7 +273,7 @@ def main():
         else:
             splits_dir = output_dir / "splits"
 
-        gpu_allocations = allocator.allocate(args.n_splits)
+        
 
         training_pipeline = TrainingPipeline(str(output_dir), cot_datasynth_dir)
 
@@ -306,7 +299,7 @@ def main():
             val_data_path=args.val_data_path,
             eval_data_name=args.eval_data_name,
             prompt_template_method=args.prompt_template_method,
-            num_epochs=args.num_epochs,
+            num_epochs=args.num_epochs
         )
 
         logger.info(f"Training results: {results}")
@@ -322,6 +315,7 @@ def main():
         gpu_ids = [int(g) for g in args.gpu_ids.split(',')]
         allocator = GPUAllocator(gpu_ids, args.gpus_per_split)
         gpu_allocations = allocator.allocate(args.n_splits)
+        eval_summary_rows = []
 
         logger.info(f"Running evaluation for {args.n_splits} splits...")
         logger.info(f"GPU allocations: {gpu_allocations}")
@@ -339,13 +333,104 @@ def main():
                     'base_model_id': args.model_id,
                 }
 
-                training_pipeline.run_evaluation(
+                eval_success = training_pipeline.run_evaluation(
                     config,
                     args.eval_data_name,
                     prompt_template_method=args.prompt_template_method,
                 )
+
+                split_accuracy = None
+                results_file = split_output_dir / "training_results.json"
+                if results_file.exists():
+                    try:
+                        with open(results_file, 'r', encoding='utf-8') as f:
+                            split_results = json.load(f)
+                        split_accuracy = split_results.get("test_accuracy")
+                    except Exception as e:
+                        logger.warning(f"Failed to read {results_file}: {e}")
+
+                eval_summary_rows.append({
+                    "eval_data_name": args.eval_data_name,
+                    "split_id": split_id,
+                    "accuracy": split_accuracy,
+                    "eval_success": bool(eval_success),
+                })
             else:
                 logger.warning(f"Split {split_id} output directory not found: {split_output_dir}")
+                eval_summary_rows.append({
+                    "eval_data_name": args.eval_data_name,
+                    "split_id": split_id,
+                    "accuracy": None,
+                    "eval_success": False,
+                })
+
+        eval_summary_path = output_dir / "evaluation_split_accuracy.csv"
+
+        split_accuracy_map = {
+            int(row["split_id"]): row.get("accuracy")
+            for row in eval_summary_rows
+        }
+
+        detected_split_ids = set()
+        for split_dir in training_pipeline.training_dir.glob("split_*"):
+            try:
+                detected_split_ids.add(int(split_dir.name.split("_")[1]))
+            except (IndexError, ValueError):
+                continue
+        if not detected_split_ids:
+            detected_split_ids = set(split_accuracy_map.keys())
+
+        current_max_split = max(detected_split_ids) if detected_split_ids else -1
+        current_row = {"dataset_name": args.eval_data_name}
+        for split_id in range(current_max_split + 1):
+            current_row[f"split_{split_id}"] = split_accuracy_map.get(split_id)
+
+        current_values = [
+            value for value in current_row.values()
+            if isinstance(value, (int, float))
+        ]
+        if current_values:
+            current_avg = float(sum(current_values) / len(current_values))
+            current_var = float(sum((v - current_avg) ** 2 for v in current_values) / len(current_values))
+        else:
+            current_avg = None
+            current_var = None
+        current_row["avg"] = current_avg
+        current_row["var"] = current_var
+
+        new_df = pd.DataFrame([current_row])
+
+        if eval_summary_path.exists():
+            existing_df = pd.read_csv(eval_summary_path)
+
+            existing_split_cols = [
+                c for c in existing_df.columns
+                if c.startswith("split_") and c.split("_")[-1].isdigit()
+            ]
+            existing_max_split = (
+                max(int(c.split("_")[1]) for c in existing_split_cols)
+                if existing_split_cols else -1
+            )
+            final_max_split = max(existing_max_split, current_max_split)
+            final_columns = (
+                ["dataset_name"]
+                + [f"split_{i}" for i in range(final_max_split + 1)]
+                + ["avg", "var"]
+            )
+
+            existing_df = existing_df.reindex(columns=final_columns)
+            new_df = new_df.reindex(columns=final_columns)
+            merged_df = pd.concat([existing_df, new_df], ignore_index=True)
+        else:
+            final_columns = (
+                ["dataset_name"]
+                + [f"split_{i}" for i in range(current_max_split + 1)]
+                + ["avg", "var"]
+            )
+            merged_df = new_df.reindex(columns=final_columns)
+
+        merged_df.to_csv(eval_summary_path, index=False)
+        logger.info(f"Saved split evaluation summary to {eval_summary_path}")
 
     # Phase 4: Analysis
     if not args.skip_analysis and not args.only_evaluation:

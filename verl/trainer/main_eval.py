@@ -17,6 +17,7 @@ The input is a parquet file that contains N generated sequences and (optional) t
 
 """
 
+import json
 import os
 from collections import defaultdict
 
@@ -28,6 +29,18 @@ from tqdm import tqdm
 
 from verl.utils.fs import copy_to_local
 from verl.utils.eval.metrics import compute_all_metrics
+
+
+def _json_safe(value):
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, tuple):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
 
 
 @ray.remote
@@ -140,6 +153,9 @@ def main(config):
     ]
 
     output_path = config.data.output_path
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
     base_name = os.path.basename(output_path)
     name, ext = os.path.splitext(base_name)
     
@@ -160,31 +176,22 @@ def main(config):
                                   data_source_reward, is_correct_per_response, data_sources,
                                   max_n=None, num_bootstrap=1000, seed=42)
 
-    # print("\n" + "="*60)
-    # print("📊 Evaluation Results")
-    # print("="*60)
-    
-    # for ds in sorted(data_source_reward.keys()):        
-    #     print(f"\n📁 Data Source: {ds}")
+    metrics_path = os.path.join(os.path.dirname(output_path), f"{name}.metrics.json")
+    with open(metrics_path, "w", encoding="utf-8") as f:
+        json.dump(_json_safe(results), f, indent=2, ensure_ascii=False)
 
-    #     for metric, value in results[ds].items():
-    #         if 'accuracy' in metric:
-    #             print(f"    {metric}: {value:.2f}%")
-    #         elif 'total' in metric or 'correct' in metric:
-    #             print(f"    {metric}: {value}")
-    #         else:
-    #             print(f"    {metric}: {value:.4f}")
-    
-    # # 总体统计
-    # if 'overall' in results.keys():
-    #     print(f"\n📊 Overall Statistics:")
-    #     print(f"   ✅ Total Correct: {results['overall']['correct']}/{results['overall']['total']}")
-    #     print(f"   🎯 Overall Accuracy: {results['overall']['accuracy']:.2f}%")
-
-    # print("="*60)
-    # print("Raw Metrics Dictionary:")
-    # print(results)
-    # print("="*60)
+    print("\n" + "=" * 60)
+    print("Evaluation Results")
+    print("=" * 60)
+    for ds in sorted(results.keys()):
+        print(f"[{ds}]")
+        for metric, value in sorted(results[ds].items()):
+            if isinstance(value, (int, float)):
+                print(f"{metric}: {value:.6f}")
+            else:
+                print(f"{metric}: {value}")
+    print(f"metrics_json: {metrics_path}")
+    print("=" * 60)
 
     return results
 

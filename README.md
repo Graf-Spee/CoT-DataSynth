@@ -1,9 +1,17 @@
 # Repo for Synthetic CoT Data
 
-All scripts for training and evaluation are in `/scripts`. Please modify `config/bash_config.env` to set the directory for storing model checkpoints and logs. Usage of the scripts are instructed upon running `bash <script_name.sh>` without any parameters.
+This repo keeps verl-facing training/evaluation entrypoints in `scripts/` and
+DataObs experiment orchestration in `DataObs/`.
 
+- `DataObs/scripts/experiment_pipeline.py`: main DataObs experiment entrypoint.
+- `DataObs/lib/`: DataObs pipeline implementation, grouped by data processing,
+  training, evaluation, and model operations.
+- `scripts/`: general verl entrypoints, examples, environment helpers, and one-off
+  data conversion scripts.
 
-## `scripts/cot_distill_teacher_filter.py`
+Modify `config/bash_config.env` to set checkpoint and log directories.
+
+## `DataObs/lib/data_process/cot_distill_teacher_filter.py`
 
 This script generates CoT responses with a local teacher model through vLLM, then filters generated samples by checking whether the teacher answer matches the gold answer. It currently supports `commonsenseqa` and `mbpp`.
 
@@ -15,7 +23,7 @@ Input parquet requirements:
 Basic usage:
 
 ```bash
-python scripts/cot_distill_teacher_filter.py \
+python DataObs/lib/data_process/cot_distill_teacher_filter.py \
   --dataset commonsenseqa \
   --input-file /path/to/input.parquet \
   --output-file /path/to/output.parquet \
@@ -27,7 +35,7 @@ python scripts/cot_distill_teacher_filter.py \
 
 Common parameters:
 
-- `--dataset`: dataset name, either `commonsenseqa` or `mbpp`.
+- `--dataset`: dataset name, for example `gsm8k`, `math-500`, `arc-challenge`, `commonsenseqa`, or `mbpp`.
 - `--input-file`: processed input parquet file.
 - `--output-file`: output parquet file for filtered CoT samples.
 - `--model-id`: local teacher model path or Hugging Face model id.

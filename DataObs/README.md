@@ -1,309 +1,73 @@
 # DataObs
 
-数据观察和分析管线，研究数据集特性与模型训练表现之间的关系。
+数据观察、蒸馏、训练、评测和实验管理管线。当前框架把主链路入口、复用库和辅助工具分开维护。
 
-## 运行
+`DataObs` 现在保留两类 pipeline：
 
-> 注意：`scripts/data_obs_pipeline.py` 已弃用，当前推荐使用
-> `scripts/data_obs_pipeline_test.py`。旧文件暂时保留，待验证完成后再删除。
+- `scripts/experiment_pipeline.py`: 主入口，负责 distill -> metrics -> SFT -> SFT eval -> GRPO -> GRPO eval。当前实验 recipes 都应优先走这个入口。
+- `scripts/data_obs_pipeline.py`: 数据指标/分 split/相关性分析入口，主要被 `experiment_pipeline.py` 的 `metrics` stage 调用。
+- `lib/evaluation/dataobs_eval_runner.py`: Python-native eval runner，支持 dataset-specific prompt template、custom eval data path 和 smoke-test row limit。
 
-### 基础用法
-
-```bash
-cd /home/hrh/CoT-DataSynth/DataObs
-python scripts/data_obs_pipeline_test.py \
-  --data_path /data/open_datasets/GSM8K/train_messages.parquet \
-  --model_id /data/pretrain_models/Qwen2.5-0.5B-Instruct \
-  --n_splits 10 \
-  --output_dir /data/hrh/COT
-```
-
-请务必在运行脚本前更改 `CoT-DataSynth/config/bash_config.env` 下的参数设置！
-
-### 参数
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--data_path` | 必填 | 数据路径 (parquet/jsonl/json) |
-| `--data_name` | 自动从 data_path 提取 | 输出子目录名 |
-| `--model_id` | 必填 |模型路径 |
-| `--output_dir` | 必填 | 输出目录 |
-| `--splits_dir` | None | 分割目录，仅需在跳过分割时指定 |
-| `--train_script` | scripts/sft_dataobs.sh | 训练脚本 |
-| `--eval_script` | scripts/eval_dataobs.sh | 评测脚本 |
-| `--eval_data_path` | /data/open_datasets/GSM8K/test.parquet | 评测数据 |
-| `--seed` | 42 | 随机种子 |
-| `--gpu_ids` | 0,1,2,3,4,5,6,7 | GPU 列表 |
-| `--gpus_per_split` | 1 | 每个分割用多少 GPU |
-| `--n_splits` | 10 | 分割数量 |
-| 数据指标参数 | 略 | 见下 |
-| `--skip_split` | 否 | 跳过数据分割 |
-| `--skip_metrics` | 否 | 跳过指标计算 |
-| `--skip_training` | 否 | 跳过训练 |
-| `--skip_analysis` | 否 | 跳过分析 |
-| `--do_evaluation` | 否 | 运行单独评测 |
-| `--only_evaluation` | 否 | 只运行评测，跳过所有其他阶段 |
-
-### 输出目录结构
-
-```
-<output_dir>/<data_name>/
-├── splits/              # 分割数据 (split_0.parquet, ...)
-├── metrics/            # 分割指标 (split_0_metrics.json, ...)
-├── data_metrics_summary.csv  # 指标汇总
-├── training/          # 训练结果 (split_*/training_results.json 等)
-├── training_results.csv
-└── observation/       # 相关性和可视化结果
-   ├── correlations.csv
-   ├── strong_correlations_0.6.csv
-   ├── strong_correlations_0.4.csv
-   ├── correlation_heatmap_full.png
-   ├── correlation_heatmap_length.png
-   ├── correlation_heatmap_diversity.png
-   ├── correlation_heatmap_entropy.png
-   ├── correlation_heatmap_ppl_ifd.png
-   ├── correlation_heatmap_quality.png
-   ├── scatter_matrix.png
-   ├── metrics_overview.png
-   └── training_convergence.png
-```
-
-## 计算指标 (compute_metrics.py)
-
-说明：`data_obs_pipeline.py` 不会调用 `compute_metrics.py`。  
-`compute_metrics.py` 是独立脚本，当前按 `split_*.jsonl` 读取已有 split；而 `data_obs_pipeline.py` 默认保存 `split_*.parquet`。
-
-### 用法
+## Dashboard
 
 ```bash
-# 计算所有指标
-python scripts/compute_metrics.py --output_dir /data/hrh/COT/GSM8K
-
-# 只计算特定指标
-python scripts/compute_metrics.py --output_dir /data/hrh/COT/GSM8K --metrics diversity entropy
-
-# 使用指定相似度计算 diversity
-python scripts/compute_metrics.py --output_dir /data/hrh/COT/GSM8K --metrics diversity --similarity_type cosine
-
-# 在 answer 上计算 diversity
-python scripts/compute_metrics.py --output_dir /data/hrh/COT/GSM8K --metrics diversity --compute_on answer
-
-# 计算需要模型的指标
-python scripts/compute_metrics.py --output_dir /data/hrh/COT/GSM8K --metrics ppl ifd --model gpt2
+python DataObs/tools/experiment_dashboard.py \
+  --experiments-root /data/hrh/COT/experiments \
+  --host 127.0.0.1 \
+  --port 7860
 ```
 
-### 参数
+## Directory Layout
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--output_dir` | 必填 | 输出目录 |
-| `--data_name` | None | 数据子目录名 |
-| `--split_ids` | None | 指定 split ID (如 --split_ids 0 1 2) |
-| `--metrics` | 全部 | 要计算的指标 (如 --metrics diversity entropy) |
-| `--model` | None | 模型名 (用于 ppl/ifd) |
-| `--similarity_type` | jaccard | 相似度类型 |
-| `--compute_on` | both | 计算对象 (prompt/answer/both) |
+```text
+DataObs/
+  config/                  # DataObs 自己的配置和 registry
+    data_pipeline.yaml      # 数据指标 pipeline 配置模板
+    teacher_registry.json   # teacher/student 模型 registry
+  lib/                      # pipeline 调用的函数和类
+  scripts/                  # pipeline 入口脚本，保持精简
+  tools/                    # 非主链路工具/legacy/验证脚本
+  docs/                     # runbook、metrics、结构说明
+  experiment_instruction/   # 可直接跑的实验命令
+```
 
-## 指标说明
-
-### 1. 统计指标 (statistics)
-
-| 指标 | 说明 |
-|------|------|
-| `num_samples` | 样本数量 |
-| `avg_prompt_length` | 平均 prompt 长度 (字符) |
-| `std_prompt_length` | prompt 长度标准差 |
-| `min_prompt_length` / `max_prompt_length` | prompt 长度范围 |
-| `avg_response_length` | 平均 response 长度 |
-| `std_response_length` | response 长度标准差 |
-| `min_response_length` / `max_response_length` | response 长度范围 |
-| `num_unique_data_sources` | 不同数据源数量 |
-| `num_unique_abilities` | 不同能力类型数量 |
-
-### 2. 质量指标 (quality)
-
-| 指标 | 说明 |
-|------|------|
-| `answer_coverage` | 有答案的样本比例 |
-| `format_validity` | 格式有效样本比例 |
-| `prompt_uniqueness` | prompt 唯一性 |
-
-### 3. 多样性指标 (diversity)
-
-基于相似度函数计算，数据多样性 = 1 - 平均相似度。
-
-#### 支持的相似度函数
-
-| 类型 | 说明 | 公式 |
-|------|------|------|
-| `jaccard` | 词级 Jaccard | $\frac{|A \cap B\|}{\|A \cup B|}$ |
-| `levenshtein` | 编辑距离 | $1 - \frac{\text{edit\_dist}}{\max(\|A\|, \|B\|)}$ |
-| `cosine` | TF-IDF 余弦 | $\cos(\vec{A}, \vec{B})$ |
-| `jaro_winkler` | Jaro-Winkler | 基于前缀修正的相似度 |
-| `ngram` | N-gram | 基于字符 n-gram 的相似度 |
-| `bertouch` | BERT 语义 | 基于 sentence-transformers 的语义相似度 |
-| `bleu` | BLEU | 词级 precision |
-| `rouge` | ROUGE-L | 基于最长公共子序列 |
-
-#### diversity 输出指标
-
-| 指标 | 说明 |
-|------|------|
-| `diversity_score` | 多样性分数 = 1 - 平均相似度 |
-| `avg_similarity` | 平均相似度 |
-| `min_similarity` | 最小相似度 |
-| `max_similarity` | 最大相似度 |
-| `std_similarity` | 相似度标准差 |
-| `similarity_type` | 使用的相似度类型 |
-
-#### compute_on 选项
-
-- `prompt`: 只在 prompt 上计算
-- `answer`: 只在 answer 上计算
-- `both`: 在 prompt + answer 上计算
-
-### 4. 熵指标 (entropy)
-
-| 指标 | 说明 |
-|------|------|
-| `avg_char_entropy` | 平均字符级熵 |
-| `std_char_entropy` | 字符级熵标准差 |
-| `min_char_entropy` / `max_char_entropy` | 字符级熵范围 |
-| `avg_word_entropy` | 平均词级熵 |
-| `std_word_entropy` | 词级熵标准差 |
-| `min_word_entropy` / `max_word_entropy` | 词级熵范围 |
-
-#### Shannon 熵公式
-
-$$H(X) = -\sum_{i} p(x_i) \log_2 p(x_i)$$
-
-### 5. PPL 指标 (ppl)
-
-使用语言模型计算文本的困惑度。
-
-| 指标 | 说明 |
-|------|------|
-| `avg_ppl` | 平均困惑度 |
-| `std_ppl` | 困惑度标准差 |
-| `min_ppl` / `max_ppl` | 困惑度范围 |
-
-- 高 PPL: 模型不确定 (可能是噪声文本)
-- 低 PPL: 模型确定 (可能是通用/模板文本)
-
-### 6. IFD 指标 (ifd)
-
-Instruction Following Difficulty，衡量指令跟随难度。
-
-$$IFD = \frac{\text{Loss}_{\text{with\_prompt}}}{\text{Loss}_{\text{without\_prompt}}}$$
-
-| 指标 | 说明 |
-|------|------|
-| `avg_ifd` | 平均 IFD |
-| `std_ifd` | IFD 标准差 |
-| `min_ifd` / `max_ifd` | IFD 范围 |
-
-- 高 IFD: 答案难以从 prompt 预测 (学习价值高)
-- 低 IFD: 答案容易预测 (可能是通用答案)
-
-## Lib 模块
-
-### data_obs.py
-
-- `DatasetMetrics`: 数据指标 dataclass
-- `DataSplitter`: 数据分割器，将数据均匀分成 n 份，计算指标
-- `GPUAllocator`: GPU 分配器
-- `ResultCollector`: 训练结果收集器
-
-### data_metrics.py
-
-- `compute_data_statistics()`: 统计指标
-- `compute_data_quality_metrics()`: 质量指标
-- `compute_all_data_metrics()`: 全部基础指标
-
-### advanced_metrics.py
-
-- `compute_dataset_diversity()`: 多样性指标 (支持多种相似度)
-- `compute_dataset_entropy()`: 熵指标
-- `compute_ppl_metrics()`: PPL 指标
-- `compute_ifd_metrics()`: IFD 指标
-- `compute_advanced_data_metrics()`: 全部高级指标
-- `SimilarityType`: 相似度类型枚举
-- `DiversityConfig`: Diversity 配置
-- `get_similarity_function()`: 获取相似度函数实例
-- `compute_diversity_with_similarity()`: 统一 diversity 计算接口
-
-### training_pipeline.py
-
-- `TrainingPipeline`: 训练管线，管理多 GPU 训练任务
-
-### analysis_pipeline.py
-
-- `CorrelationAnalyzer`: 相关性分析
-- `AnalysisVisualizer`: 结果可视化
-
-## 数据格式
-
-输入数据需包含字段：
-- `prompt`: 问题
-- `reward_model.ground_truth`: 答案
-- `extra_info.answer`: 答案 (可选)
-
-## Analysis 说明（与当前实现对齐）
-
-- `correlations.csv`：所有可计算的相关性对（不额外过滤 min/max 指标）。
-- `strong_correlations_0.6.csv` / `strong_correlations_0.4.csv`：
-  - 先按 `|correlation| >= threshold` 过滤；
-  - 默认再过滤掉任一侧为 `min_*` / `max_*` 的指标对。
-- 热力图分组：
-  - 会过滤 `min_*` / `max_*` 指标；
-  - `ppl` 与 `ifd` 合并成 `correlation_heatmap_ppl_ifd.png`；
-  - 不再生成 `correlation_heatmap_training.png`。
-
-## 用 DeepSeek 生成实验结论
-
-脚本：`DataObs/scripts/analyze_observation_deepseek.py`
-
-用途：读取 `observation/correlations.csv` 与 `observation/strong_correlations_*.csv`，结合指标含义，调用 DeepSeek API 生成实验观察结论 Markdown。
-
-### 1) 最小用法
+## Main Pipeline
 
 ```bash
-export DEEPSEEK_API_KEY="你的key"
-
-python /home/hrh/CoT-DataSynth/DataObs/scripts/analyze_observation_deepseek.py \
-  --obs_dir /data/hjw/outputs/MATH-CoT-Qwen3B/observation \
-  --threshold 0.4
+cd /home/hrh/CoT-DataSynth
+python DataObs/scripts/experiment_pipeline.py \
+  --experiment-id distill_smoke_gsm8k_qwen3_5_9b \
+  --dataset gsm8k \
+  --base-model /data/pretrain_models/Qwen3.5-0.8B \
+  --teacher-model /data/pretrain_models/Qwen3.5-9B \
+  --output-dir /data/hrh/COT/experiments \
+  --stages distill \
+  --gpu-ids 7 \
+  --smoke-num-rows 8 \
+  --teacher-num-samples 1 \
+  --teacher-temperature 0.7 \
+  --teacher-batch-size 8 \
+    --teacher-max-new-tokens 1024
 ```
 
-默认输出文件：
-- `/data/hjw/outputs/MATH-CoT-Qwen3B/observation/observation_conclusion_deepseek.md`
+实验命令集合见：
 
-### 2) `--threshold` 是什么
-
-- `--threshold 0.4` 表示“强相关阈值”是 `|correlation| >= 0.4`。
-- 脚本会优先读 `strong_correlations_0.4.csv`；
-- 如果该文件不存在，会回退到 `correlations.csv` 并按阈值过滤。
-- 一般：
-  - `0.4`：中等相关，覆盖更广；
-  - `0.6`：强相关，更保守。
-
-### 3) 常用参数
-
-- `--model`：DeepSeek 模型，默认 `deepseek-chat`（可改 `deepseek-reasoner`）。
-- `--include_min_max`：是否把 `min_* / max_*` 指标也纳入分析（默认排除）。
-- `--goal`：自定义分析目标（默认已内置冷启动目标）。
-- `--max_tokens`：单次 API 调用 token 上限（默认 8000）。
-- `--max_rounds`：当输出被截断时自动续写的最大轮数（默认 8）。
-- `--output`：自定义输出 Markdown 路径。
-
-### 4) 后台运行示例
-
-```bash
-nohup bash -lc '
-export DEEPSEEK_API_KEY="你的key"
-python /home/hrh/CoT-DataSynth/DataObs/scripts/analyze_observation_deepseek.py \
-  --obs_dir /data/hjw/outputs/MATH-CoT-Qwen3B/observation \
-  --threshold 0.4 \
-  --model deepseek-chat
-' > /data/hjw/outputs/MATH-CoT-Qwen3B/observation/deepseek_observation_analysis.log 2>&1 &
+```text
+DataObs/experiment_instruction/
 ```
+
+详细实验设计和待确认项见：
+
+```text
+DataObs/docs/runbook.md
+```
+
+## Scripts Policy
+
+`scripts/` 只放 pipeline 直接入口：
+
+- `experiment_pipeline.py`
+- `data_obs_pipeline.py`
+- `split_seed_prompts.py`
+
+辅助分析、验证、历史兼容脚本放在 `tools/`。

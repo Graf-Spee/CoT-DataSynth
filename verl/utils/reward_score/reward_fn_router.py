@@ -14,18 +14,21 @@ def compute_score_router(data_source, solution_str, ground_truth, extra_info=Non
     Raises:
         NotImplementedError: If the reward function is not implemented for the given data source.
     """
-    if data_source == "openai/gsm8k":
+    if data_source in ["gsm8k", "openai/gsm8k"]:
         from verl.utils.reward_score import gsm8k
         res = gsm8k.compute_score(solution_str, ground_truth)
     elif data_source in ["math", "math-500", "numinamath"]:
         from verl.utils.reward_score import math_verify
         res = math_verify.compute_score(solution_str, ground_truth)
-    elif data_source in ["aqua_rat", "ai2_arc"]:
+    elif data_source in ["aqua_rat", "ai2_arc", "arc-challenge", "commonsenseQA"]:
         from verl.utils.reward_score import multiple_choice
         res = multiple_choice.compute_score(solution_str, ground_truth)
-    elif data_source in ["strategyQA"]:
+    elif data_source in ["strategyQA", "strategyqa"]:
         from verl.utils.reward_score import truefalse
         res = truefalse.compute_score(solution_str, ground_truth)
+    elif data_source in ["mbpp", "mbppplus", "humaneval", "humanevalplus", "livecodebench"]:
+        from verl.utils.reward_score import mbpp
+        res = mbpp.compute_score(solution_str, ground_truth)
     else:
         raise NotImplementedError(f"Reward function is not implemented for {data_source=}")
 

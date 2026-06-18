@@ -6,14 +6,27 @@ import pandas as pd
 import numpy as np
 from copy import deepcopy
 
-from verl.utils.eval.prompt_templates.aqua_rat import aqua_rat_plain, aqua_rat_zeroshot
-from verl.utils.eval.prompt_templates.arc_challenge import arc_challenge_plain, arc_challenge_zeroshot, CHOICE_3, CHOICE_4, CHOICE_5
-from verl.utils.eval.prompt_templates.commonsenseqa import commonsenseqa_plain, commonsenseqa_zeroshot, commonsenseqa_7_shot
-from verl.utils.eval.prompt_templates.gsm8k import gsm8k_plain, gsm8k_zeroshot, gsm8k_4_shot
-from verl.utils.eval.prompt_templates.humaneval import humaneval_plain, humaneval_zeroshot
-from verl.utils.eval.prompt_templates.math import math_plain, math_zeroshot, math_4_shot
-from verl.utils.eval.prompt_templates.mbpp import mbpp_plain, mbpp_zeroshot, mbpp_4_shot
-from verl.utils.eval.prompt_templates.strategyqa import strategyqa_plain, strategyqa_zeroshot, strategyqa_6_shot
+try:
+    from verl.utils.eval.prompt_templates.aqua_rat import aqua_rat_plain, aqua_rat_zeroshot
+    from verl.utils.eval.prompt_templates.arc_challenge import arc_challenge_plain, arc_challenge_zeroshot, CHOICE_3, CHOICE_4, CHOICE_5
+    from verl.utils.eval.prompt_templates.commonsenseqa import commonsenseqa_plain, commonsenseqa_zeroshot, commonsenseqa_7_shot
+    from verl.utils.eval.prompt_templates.gsm8k import gsm8k_plain, gsm8k_zeroshot, gsm8k_4_shot
+    from verl.utils.eval.prompt_templates.humaneval import humaneval_plain, humaneval_zeroshot
+    from verl.utils.eval.prompt_templates.math import math_plain, math_zeroshot, math_4_shot
+    from verl.utils.eval.prompt_templates.mbpp import mbpp_plain, mbpp_zeroshot, mbpp_4_shot
+    from verl.utils.eval.prompt_templates.strategyqa import strategyqa_plain, strategyqa_zeroshot, strategyqa_6_shot
+except ModuleNotFoundError:
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from prompt_templates.aqua_rat import aqua_rat_plain, aqua_rat_zeroshot
+    from prompt_templates.arc_challenge import arc_challenge_plain, arc_challenge_zeroshot, CHOICE_3, CHOICE_4, CHOICE_5
+    from prompt_templates.commonsenseqa import commonsenseqa_plain, commonsenseqa_zeroshot, commonsenseqa_7_shot
+    from prompt_templates.gsm8k import gsm8k_plain, gsm8k_zeroshot, gsm8k_4_shot
+    from prompt_templates.humaneval import humaneval_plain, humaneval_zeroshot
+    from prompt_templates.math import math_plain, math_zeroshot, math_4_shot
+    from prompt_templates.mbpp import mbpp_plain, mbpp_zeroshot, mbpp_4_shot
+    from prompt_templates.strategyqa import strategyqa_plain, strategyqa_zeroshot, strategyqa_6_shot
 
 
 PreprocessFn = Callable[[pd.DataFrame, str], pd.DataFrame]
@@ -115,8 +128,8 @@ def _extract_boxed_answer(solution: Any) -> str:
 def _extract_gsm8k_answer(answer: Any) -> str:
     answer = str(answer)
     if "####" in answer:
-        return answer.split("####")[-1].strip()
-    return answer.strip()
+        return answer.split("####")[-1].replace(",", "").strip()
+    return answer.replace(",", "").strip()
 
 
 def _aqua_rat(df: pd.DataFrame, method: str) -> pd.DataFrame:
