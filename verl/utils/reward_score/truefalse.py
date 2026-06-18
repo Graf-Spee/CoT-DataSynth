@@ -1,3 +1,7 @@
+"""
+https://github.com/open-compass/opencompass/blob/main/opencompass/datasets/strategyqa.py
+"""
+
 import re
 
 # def extract_boolean_answer(text: str, flexible: bool = False) -> str:
@@ -74,7 +78,15 @@ def extract_boolean_answer(text: str) -> str:
     match = re.findall(r"(true|false)", text, re.IGNORECASE)
     return match[-1].lower() if match else "N/A"
 
-def compute_score(solution_str, ground_truth, method="strict", format_score=0.0, score=1.0):
+def strategyqa_pred_postprocess(text: str) -> str:
+    text = text.split('\n\n')[0]
+    text = text.split('answer is ')[-1]
+    match = re.search(r'(yes|no)', text.lower())
+    if match:
+        return match.group(1)
+    return ''
+
+def compute_score(solution_str, ground_truth, method="yes_no", format_score=0.0, score=1.0):
     """
     Evaluate true/false question.
     
@@ -91,17 +103,19 @@ def compute_score(solution_str, ground_truth, method="strict", format_score=0.0,
         float: score (1.0 for correct, 0.0 for incorrect, or format_score)
     """
 
-    assert method in ["strict", "flexible"]
+    assert method in ["yes_no", "true_false"]
     
     if not solution_str or ground_truth is None:
         return 0.0
     
+    extractor = strategyqa_pred_postprocess if method == "yes_no" else extract_boolean_answer
+    
     # Extract prediction
-    pred = extract_boolean_answer(solution_str)
+    pred = extractor(solution_str)
 
-    if pred == "true":
+    if pred == "true" or pred == "yes":
         pred_bool = True
-    elif pred == "false":
+    elif pred == "false" or pred == "no":
         pred_bool = False
     else:
         return 0.0
@@ -113,4 +127,4 @@ def compute_score(solution_str, ground_truth, method="strict", format_score=0.0,
     return 0.0
 
 def extract_pred(solution_str: str) -> str:
-    return extract_boolean_answer(solution_str)
+    return strategyqa_pred_postprocess(solution_str)

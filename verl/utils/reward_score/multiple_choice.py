@@ -1,51 +1,103 @@
+"""
+https://github.com/open-compass/opencompass/blob/main/opencompass/utils/text_postprocessors.py
+"""
+
 import re
 
 
-patterns = [
-    # "Answer: C", "Option = C", "The answer is C", "Option is C"
-    r'(?:answer|option)(?:[:=\s]+|\s+is\s+)([A-E])\b',
+# patterns = [
+#     # "Answer: C", "Option = C", "The answer is C", "Option is C"
+#     r'(?:answer|option)(?:[:=\s]+|\s+is\s+)([A-E])\b',
     
-    # "(C)" —— 严格匹配成对括号
-    r'\(([A-E])\)',
+#     # "(C)" —— 严格匹配成对括号
+#     r'\(([A-E])\)',
     
-    # "C.", "C)", 行首/行尾的单独字母
-    r'(?:^|\s)([A-E])(?:\)|\.|$)',
+#     # "C.", "C)", 行首/行尾的单独字母
+#     r'(?:^|\s)([A-E])(?:\)|\.|$)',
     
-    # "Final answer: C"
-    r'final answer[:=\s]+([A-E])\b'
-]
+#     # "Final answer: C"
+#     r'final answer[:=\s]+([A-E])\b'
+# ]
 
-# def extract_option_letter(text: str, valid_options: str = 'ABCDE') -> str:
-#     """Extract option letter (A-E) from model output."""
-#     if not text:
-#         return ""
-    
-#     text = text.strip().upper()
-    
-#     # 直接匹配单个字母
-#     if len(text) == 1 and text in valid_options:
-#         return text
-    
-#     # 多行取最后一行
-#     lines = text.split('\n')
+def first_option_postprocess(text: str, options: str = 'ABCDE', cushion=True) -> str:
+    """Find first valid option for text."""
 
-#     for line in reversed(lines):
-#         line = line.strip()
-#         if not line:
-#             continue
-            
-#         line = line.upper()
+    # yapf: disable
+    # flake8: noqa: W605
+    patterns = [
+        f'答案是?\s*([{options}])',
+        f'答案是?\s*：\s*([{options}])',
+        f'答案是?\s*:\s*([{options}])',
+        f'答案选项应?该?是\s*([{options}])',
+        f'答案选项应?该?为\s*([{options}])',
+        f'答案应该?是\s*([{options}])',
+        f'答案应该?选\s*([{options}])',
+        f'答案选项为?\s*：\s*([{options}])',
+        f'答案选项为?\s+\(?\*?\*?([{options}])\*?\*?\)?',
+        f'答案选项是?\s*:\s*([{options}])',
+        f'答案为\s*([{options}])',
+        f'答案选\s*([{options}])',
+        f'选择?\s*([{options}])',
+        f'故选?\s*([{options}])'
+        f'只有选?项?\s?([{options}])\s?是?对',
+        f'只有选?项?\s?([{options}])\s?是?错',
+        f'只有选?项?\s?([{options}])\s?不?正确',
+        f'只有选?项?\s?([{options}])\s?错误',
+        f'说法不?对选?项?的?是\s?([{options}])',
+        f'说法不?正确选?项?的?是\s?([{options}])',
+        f'说法错误选?项?的?是\s?([{options}])',
+        f'([{options}])\s?是正确的',
+        f'([{options}])\s?是正确答案',
+        f'选项\s?([{options}])\s?正确',
+        f'所以答\s?([{options}])',
+        f'所以\s?([{options}][.。$]?$)',
+        f'所有\s?([{options}][.。$]?$)',
+        f'[\s，：:,]([{options}])[。，,\.]?$',
+        f'[\s，,：:][故即]([{options}])[。\.]?$',
+        f'[\s，,：:]因此([{options}])[。\.]?$',
+        f'[是为。]\s?([{options}])[。\.]?$',
+        f'因此\s?([{options}])[。\.]?$',
+        f'显然\s?([{options}])[。\.]?$',
+        f'答案是\s?(\S+)(?:。|$)',
+        f'答案应该是\s?(\S+)(?:。|$)',
+        f'答案为\s?(\S+)(?:。|$)',
+        f'(?i)ANSWER\s*:\s*([{options}])',
+        f'[Tt]he answer is:?\s+\(?([{options}])\)?',
+        f'[Tt]he answer is:?\s+\(?\*?\*?([{options}])\*?\*?\)?',
+        f'[Tt]he answer is option:?\s+\(?([{options}])\)?',
+        f'[Tt]he correct answer is:?\s+\(?([{options}])\)?',
+        f'[Tt]he correct answer is option:?\s+\(?([{options}])\)?',
+        f'[Tt]he correct answer is:?.*?boxed{{([{options}])}}',
+        f'[Tt]he correct option is:?.*?boxed{{([{options}])}}',
+        f'[Tt]he correct answer option is:?.*?boxed{{([{options}])}}',
+        f'[Tt]he answer to the question is:?\s+\(?([{options}])\)?',
+        f'^选项\s?([{options}])',
+        f'^([{options}])\s?选?项',
+        f'(\s|^)[{options}][\s。，,：:\.$]',
+        f'1.\s?(.*?)$',
+        f'1.\s?([{options}])[.。$]?$',
+    ]
+    cushion_patterns = [
+        f'([{options}]):',
+        f'([{options}])',
+    ]
+    # flake8: noqa
+    # yapf: enable
 
-#         for pattern in patterns:
-#             match = re.search(pattern, line, re.IGNORECASE)
-#             if match:
-#                 candidate = match.group(1).upper()
-#                 if candidate in valid_options:
-#                     return candidate
-            
-#         break
-        
-#     return ""
+    if cushion:
+        patterns.extend(cushion_patterns)
+    for pattern in patterns:
+        text = text.strip()
+        match = re.search(pattern, text, re.DOTALL)
+        if match:
+            if match.group(1) is not None and match.group(1) != '':
+                outputs = match.group(1)
+            else:
+                outputs = match.group(0)
+            for i in options:
+                if i in outputs:
+                    return i
+    return ''
 
 def extract_option_letter(text: str, valid_options: str = 'ABCDE') -> str:
     if not text:
@@ -64,21 +116,21 @@ def last_capital_postprocess(text: str) -> str:
             return t
     return ""
 
-def extract_flexible(text: str, valid_options: str = 'ABCDE'):
-    if not text:
-        return ""
+# def extract_flexible(text: str, valid_options: str = 'ABCDE'):
+#     if not text:
+#         return ""
     
-    text = text.strip().upper()
+#     text = text.strip().upper()
 
-    for pattern in patterns:
-        matches = re.findall(pattern, text)
-        if matches:
-            # 返回最后一个匹配的选项（通常最后的提及是最终答案）
-            candidate = matches[-1]
-            if candidate in valid_options:
-                return candidate
+#     for pattern in patterns:
+#         matches = re.findall(pattern, text)
+#         if matches:
+#             # 返回最后一个匹配的选项（通常最后的提及是最终答案）
+#             candidate = matches[-1]
+#             if candidate in valid_options:
+#                 return candidate
     
-    return ""
+#     return ""
 
 
 def compute_score(solution_str, ground_truth, method="strict", format_score=0.0, score=1.0):
@@ -107,11 +159,11 @@ def compute_score(solution_str, ground_truth, method="strict", format_score=0.0,
     if pred_letter == gt_letter:
         return score
     
-    # 宽松检查：如果文本中包含 "Answer: X" 且X正确，给部分分（可选）
-    if method == "flexible" and format_score > 0:
-        pred_letter = extract_flexible(solution_str)
-        if pred_letter == gt_letter:
-            return format_score
+    # # 宽松检查：如果文本中包含 "Answer: X" 且X正确，给部分分（可选）
+    # if method == "flexible" and format_score > 0:
+    #     pred_letter = extract_flexible(solution_str)
+    #     if pred_letter == gt_letter:
+    #         return format_score
     
     return 0.0
 
