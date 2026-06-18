@@ -23,9 +23,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 DATASET_DEFAULTS: dict[str, dict[str, str]] = {
     "gsm8k": {
-        "distill_input": "/data/open_datasets/GSM8K/train.parquet",
-        "rl_train": "/data/open_datasets/GSM8K/train.parquet",
-        "rl_val": "/data/open_datasets/GSM8K/test.parquet",
+        "distill_input": "/data/open_datasets/GSM8K/main/train-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/GSM8K/main/train-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
     },
     "math-500": {
         "distill_input": "/data/open_datasets/MATH/train_processed.parquet",
@@ -58,21 +58,29 @@ DATASET_DEFAULTS: dict[str, dict[str, str]] = {
         "rl_val": "/data/open_datasets/CommonsenseQA/data/validation-processed.parquet",
     },
     "mbpp": {
-        "distill_input": "/data/open_datasets/mbpp/sanitized/processed/test.parquet",
-        "rl_train": "/data/open_datasets/mbpp/sanitized/processed/test.parquet",
+        "distill_input": "/data/open_datasets/mbpp/sanitized/processed/train-full.parquet",
+        "rl_train": "/data/open_datasets/mbpp/sanitized/processed/train-full.parquet",
         "rl_val": "/data/open_datasets/mbpp/sanitized/processed/test.parquet",
     },
     "mbppplus": {
-        "distill_input": "/data/open_datasets/mbppplus/processed/test.parquet",
+        "distill_input": "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+        "rl_train": "/data/open_datasets/mbppplus/processed/test.parquet",
+        "rl_val": "/data/open_datasets/mbppplus/processed/test.parquet",
     },
     "humaneval": {
-        "distill_input": "/data/open_datasets/humaneval/openai_humaneval/processed/test.parquet",
+        "distill_input": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/humaneval/openai_humaneval/processed/test.parquet",
+        "rl_val": "/data/open_datasets/humaneval/openai_humaneval/processed/test.parquet",
     },
     "humanevalplus": {
-        "distill_input": "/data/open_datasets/humanevalplus/processed/test.parquet",
+        "distill_input": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+        "rl_train": "/data/open_datasets/humanevalplus/processed/test.parquet",
+        "rl_val": "/data/open_datasets/humanevalplus/processed/test.parquet",
     },
     "livecodebench": {
         "distill_input": "/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet",
+        "rl_train": "/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet",
+        "rl_val": "/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet",
     },
     "numinamath": {
         "distill_input": "/data/open_datasets/NuminaMath-CoT/train-processed-0.parquet",
@@ -152,6 +160,26 @@ def append_jsonl(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(data, ensure_ascii=False) + "\n")
+
+
+def prepare_parquet(dataset: str, input_path: str, output_path: Path) -> Path:
+    script = REPO_ROOT / "DataObs" / "lib" / "evaluation" / "prepare_eval_data.py"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--dataset",
+            dataset,
+            "--input",
+            input_path,
+            "--output",
+            str(output_path),
+        ],
+        cwd=str(REPO_ROOT),
+        check=True,
+    )
+    return output_path
 
 
 def latest_global_step(path: Path) -> Path | None:
@@ -327,6 +355,12 @@ class Pipeline:
     def rl_val_data_path(self) -> str:
         return self.args.rl_val_data or dataset_default(self.args.dataset, "rl_val")
 
+    def prepare_dataset_data(self, data_path: str, split_name: str) -> Path:
+        prepared = self.exp_dir / "prepared_data" / f"{split_name}.parquet"
+        if prepared.exists():
+            return prepared
+        return prepare_parquet(self.args.dataset, data_path, prepared)
+
     def rl_train_from_distill_kept_path(self) -> Path:
         return self.exp_dir / "rl_data" / "train_from_distill_kept.parquet"
 
@@ -350,24 +384,34 @@ class Pipeline:
         if not source_indices:
             raise SystemExit(f"[ERROR] No kept source_index found in distill output: {distill_path}")
 
-        seed_df = pd.read_parquet(seed_path)
+        prepared_seed_path = self.prepare_dataset_data(str(seed_path), "distill_seed_for_rl")
+        seed_df = pd.read_parquet(prepared_seed_path)
         max_index = len(seed_df) - 1
         bad = [idx for idx in source_indices if idx < 0 or idx > max_index]
         if bad:
             raise SystemExit(f"[ERROR] Distill source_index out of range for {seed_path}: {bad[:5]}")
-        rl_df = seed_df.iloc[source_indices].copy()
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        rl_df.to_parquet(output_path, index=False)
+
+        seed_df.iloc[source_indices].copy().to_parquet(output_path, index=False)
         self.results["rl_train_from_distill_kept"] = str(output_path)
         return output_path
+
+    def prepare_rl_data(self, data_path: str, split_name: str) -> Path:
+        prepared = self.exp_dir / "rl_data" / f"{split_name}_prepared.parquet"
+        if prepared.exists():
+            return prepared
+        return prepare_parquet(self.args.dataset, data_path, prepared)
 
     def eval_model_name(self, suffix: str) -> str:
         return self.args.model_name or f"{self.args.experiment_id}-{suffix}"
 
     def stage_distill(self) -> None:
-        distill_input = self.distill_input_path()
+        distill_input_source = self.distill_input_path()
         check_input(self.args.teacher_model, "teacher model", True, self.args.dry_run)
-        check_input(distill_input, "distill input", True, self.args.dry_run)
+        check_input(distill_input_source, "distill input", True, self.args.dry_run)
+        if self.args.dry_run and not Path(distill_input_source).exists():
+            distill_input = distill_input_source
+        else:
+            distill_input = str(self.prepare_dataset_data(distill_input_source, "distill_input"))
         cmd = [
             sys.executable,
             str(REPO_ROOT / "DataObs" / "lib" / "data_process" / "cot_distill_teacher_filter.py"),
@@ -481,8 +525,8 @@ class Pipeline:
         if self.args.rl_train_from_distill_kept:
             rl_train = str(self.build_rl_train_from_distill_kept())
         else:
-            rl_train = self.rl_train_data_path()
-        rl_val = self.rl_val_data_path()
+            rl_train = str(self.prepare_rl_data(self.rl_train_data_path(), "train"))
+        rl_val = str(self.prepare_rl_data(self.rl_val_data_path(), "val"))
         if not rl_train or not rl_val:
             raise SystemExit(f"[ERROR] No RL train/val default for dataset={self.args.dataset}. Pass --rl-train-data and --rl-val-data.")
         checkpoint = resolve_sft_checkpoint(self.sft_dir, Path(self.args.sft_checkpoint) if self.args.sft_checkpoint else None)

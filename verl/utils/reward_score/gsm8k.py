@@ -15,6 +15,17 @@
 import re
 
 
+def _to_float(value):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.replace(",", "").replace("$", "").strip()
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def extract_solution(solution_str, method="strict"):
     """
     OpenCompass: 
@@ -69,10 +80,10 @@ def compute_score(solution_str, ground_truth, method="strict", format_score=0.0,
         score: the score for the correct answer
     """
     answer = extract_solution(solution_str=solution_str, method='opencompass')
-    if answer is None:
+    answer_value = _to_float(answer)
+    ground_truth_value = _to_float(ground_truth)
+    if answer_value is None or ground_truth_value is None:
         return 0
-    else:
-        if float(answer) == float(ground_truth):
-            return score
-        else:
-            return format_score
+    if answer_value == ground_truth_value:
+        return score
+    return format_score

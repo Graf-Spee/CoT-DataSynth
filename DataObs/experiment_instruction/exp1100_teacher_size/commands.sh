@@ -5,7 +5,7 @@ cd /home/hrh/CoT-DataSynth
 
 PYTHON_BIN="${PYTHON_BIN:-/home/hrh/anaconda3/envs/verl-cot/bin/python}"
 
-DRY_RUN="${DRY_RUN:---dry-run}"
+DRY_RUN="${DRY_RUN---dry-run}"
 DATASET="${DATASET:-gsm8k}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/hrh/COT/experiments}"
 BASE_MODEL="${BASE_MODEL:-/data/pretrain_models/Qwen2.5-0.5B-Instruct}"
@@ -25,107 +25,36 @@ STAGES="${STAGES:-distill,metrics,sft,sft_eval,grpo,grpo_eval}"
 # from reasoning/cross-family teachers.
 # To actually run, use: DRY_RUN="" bash DataObs/experiment_instruction/exp1100_teacher_size/commands.sh
 
-"${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1100_${DATASET}_teacher_self_qwen2_5_0_5b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
-  --dataset "${DATASET}" \
-  --base-model "${BASE_MODEL}" \
-  --teacher-model /data/pretrain_models/Qwen2.5-0.5B-Instruct \
-  --output-dir "${OUTPUT_DIR}" \
-  --stages "${STAGES}" \
-  --gpu-ids "${GPU_IDS}" \
-  --teacher-num-samples "${TEACHER_NUM_SAMPLES}" \
-  --teacher-temperature "${TEACHER_TEMPERATURE}" \
-  --teacher-top-p "${TEACHER_TOP_P}" \
-  --teacher-do-sample \
-  --teacher-batch-size "${TEACHER_BATCH_SIZE}" \
-  --teacher-max-new-tokens "${TEACHER_MAX_NEW_TOKENS}" \
-  --teacher-tensor-parallel-size 1 \
-  --data-variant teacher_self_qwen2_5_0_5b \
-  --reasoning-source teacher \
-  --sft-epochs "${SFT_EPOCHS}" \
-  --eval-arg data.batch_size=8 \
-  --grpo-env TOTAL_EPOCHS="${GRPO_TOTAL_EPOCHS}"
+run_teacher() {
+  local tag="$1"
+  local model_path="$2"
+  local gpu_ids="$3"
+  local tp_size="$4"
+  local batch_size="$5"
 
-"${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1100_${DATASET}_teacher_qwen2_5_3b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
-  --dataset "${DATASET}" \
-  --base-model "${BASE_MODEL}" \
-  --teacher-model /data/pretrain_models/Qwen2.5-3B-Instruct \
-  --output-dir "${OUTPUT_DIR}" \
-  --stages "${STAGES}" \
-  --gpu-ids "${GPU_IDS}" \
-  --teacher-num-samples "${TEACHER_NUM_SAMPLES}" \
-  --teacher-temperature "${TEACHER_TEMPERATURE}" \
-  --teacher-top-p "${TEACHER_TOP_P}" \
-  --teacher-do-sample \
-  --teacher-batch-size "${TEACHER_BATCH_SIZE}" \
-  --teacher-max-new-tokens "${TEACHER_MAX_NEW_TOKENS}" \
-  --teacher-tensor-parallel-size 1 \
-  --data-variant teacher_qwen2_5_3b \
-  --reasoning-source teacher \
-  --sft-epochs "${SFT_EPOCHS}" \
-  --eval-arg data.batch_size=8 \
-  --grpo-env TOTAL_EPOCHS="${GRPO_TOTAL_EPOCHS}"
+  "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
+    --experiment-id exp1100_${DATASET}_teacher_${tag}_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
+    --dataset "${DATASET}" \
+    --base-model "${BASE_MODEL}" \
+    --teacher-model "${model_path}" \
+    --output-dir "${OUTPUT_DIR}" \
+    --stages "${STAGES}" \
+    --gpu-ids "${gpu_ids}" \
+    --teacher-num-samples "${TEACHER_NUM_SAMPLES}" \
+    --teacher-temperature "${TEACHER_TEMPERATURE}" \
+    --teacher-top-p "${TEACHER_TOP_P}" \
+    --teacher-do-sample \
+    --teacher-batch-size "${batch_size}" \
+    --teacher-max-new-tokens "${TEACHER_MAX_NEW_TOKENS}" \
+    --teacher-tensor-parallel-size "${tp_size}" \
+    --data-variant teacher_${tag} \
+    --reasoning-source teacher \
+    --sft-epochs "${SFT_EPOCHS}" \
+    --eval-arg data.batch_size=8 \
+    --grpo-env TOTAL_EPOCHS="${GRPO_TOTAL_EPOCHS}"
+}
 
-"${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1100_${DATASET}_teacher_qwen2_5_7b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
-  --dataset "${DATASET}" \
-  --base-model "${BASE_MODEL}" \
-  --teacher-model /data/pretrain_models/Qwen2.5-7B-Instruct \
-  --output-dir "${OUTPUT_DIR}" \
-  --stages "${STAGES}" \
-  --gpu-ids "${GPU_IDS}" \
-  --teacher-num-samples "${TEACHER_NUM_SAMPLES}" \
-  --teacher-temperature "${TEACHER_TEMPERATURE}" \
-  --teacher-top-p "${TEACHER_TOP_P}" \
-  --teacher-do-sample \
-  --teacher-batch-size "${TEACHER_BATCH_SIZE}" \
-  --teacher-max-new-tokens "${TEACHER_MAX_NEW_TOKENS}" \
-  --teacher-tensor-parallel-size 1 \
-  --data-variant teacher_qwen2_5_7b \
-  --reasoning-source teacher \
-  --sft-epochs "${SFT_EPOCHS}" \
-  --eval-arg data.batch_size=8 \
-  --grpo-env TOTAL_EPOCHS="${GRPO_TOTAL_EPOCHS}"
-
-"${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1100_${DATASET}_teacher_qwen2_5_32b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
-  --dataset "${DATASET}" \
-  --base-model "${BASE_MODEL}" \
-  --teacher-model /data/pretrain_models/Qwen2.5-32B-Instruct \
-  --output-dir "${OUTPUT_DIR}" \
-  --stages "${STAGES}" \
-  --gpu-ids "${BIG_GPU_IDS}" \
-  --teacher-num-samples "${TEACHER_NUM_SAMPLES}" \
-  --teacher-temperature "${TEACHER_TEMPERATURE}" \
-  --teacher-top-p "${TEACHER_TOP_P}" \
-  --teacher-do-sample \
-  --teacher-batch-size 16 \
-  --teacher-max-new-tokens "${TEACHER_MAX_NEW_TOKENS}" \
-  --teacher-tensor-parallel-size 2 \
-  --data-variant teacher_qwen2_5_32b \
-  --reasoning-source teacher \
-  --sft-epochs "${SFT_EPOCHS}" \
-  --eval-arg data.batch_size=8 \
-  --grpo-env TOTAL_EPOCHS="${GRPO_TOTAL_EPOCHS}"
-
-"${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1100_${DATASET}_teacher_qwen2_5_72b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
-  --dataset "${DATASET}" \
-  --base-model "${BASE_MODEL}" \
-  --teacher-model /data/pretrain_models/Qwen2.5-72B-Instruct \
-  --output-dir "${OUTPUT_DIR}" \
-  --stages "${STAGES}" \
-  --gpu-ids "${XL_GPU_IDS}" \
-  --teacher-num-samples "${TEACHER_NUM_SAMPLES}" \
-  --teacher-temperature "${TEACHER_TEMPERATURE}" \
-  --teacher-top-p "${TEACHER_TOP_P}" \
-  --teacher-do-sample \
-  --teacher-batch-size 8 \
-  --teacher-max-new-tokens "${TEACHER_MAX_NEW_TOKENS}" \
-  --teacher-tensor-parallel-size 4 \
-  --data-variant teacher_qwen2_5_72b \
-  --reasoning-source teacher \
-  --sft-epochs "${SFT_EPOCHS}" \
-  --eval-arg data.batch_size=8 \
-  --grpo-env TOTAL_EPOCHS="${GRPO_TOTAL_EPOCHS}"
+run_teacher self_qwen2_5_0_5b /data/pretrain_models/Qwen2.5-0.5B-Instruct "${GPU_IDS}" 1 "${TEACHER_BATCH_SIZE}"
+run_teacher qwen2_5_3b /data/pretrain_models/Qwen2.5-3B-Instruct "${GPU_IDS}" 1 "${TEACHER_BATCH_SIZE}"
+run_teacher qwen2_5_7b /data/pretrain_models/Qwen2.5-7B-Instruct "${GPU_IDS}" 1 "${TEACHER_BATCH_SIZE}"
+run_teacher qwen2_5_32b /data/pretrain_models/Qwen2.5-32B-Instruct "${BIG_GPU_IDS}" 2 16

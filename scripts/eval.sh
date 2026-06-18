@@ -11,6 +11,7 @@ if [ -z "$CONFIG_DIR" ]; then
 fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EVAL_REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DATAOBS_DIR="${EVAL_REPO_DIR}/DataObs"
 
 CONFIG_FILE="${CONFIG_FILE:-${CONFIG_DIR}/bash_config.env}"
 
@@ -44,6 +45,7 @@ TOP_P="${TOP_P:-0.7}"
 MAX_PROMPT_LEN="${MAX_PROMPT_LEN:-512}"
 MAX_RESPONSE_LEN="${MAX_RESPONSE_LEN:-1024}"
 BATCH_SIZE="${BATCH_SIZE:-32}"
+PROMPT_TEMPLATE_METHOD="${PROMPT_TEMPLATE_METHOD:-zeroshot}"
 
 # Set this to 1 and specify output directory to skip generation (Testing)
 SKIP_GEN="${SKIP_GEN:-0}"
@@ -139,7 +141,7 @@ case $DATASET in
     "gsm8k")
         DATA_NAME="gsm8k"
         REWARD_FUNCTION_PATH="${EVAL_REPO_DIR}/verl/utils/reward_score/gsm8k.py"
-        EVAL_DATA="/data/open_datasets/GSM8K/test.parquet"
+        EVAL_DATA="/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet"
 
         PROMPT_KEY="prompt"              # Question
         DATA_SOURCE_KEY="data_source"    # Data Source
@@ -399,11 +401,18 @@ else
     echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
     GENERATION_OUTPUT="${EVAL_OUTPUT_DIR}/generated/responses.parquet"
+    PREPARED_EVAL_DATA="${EVAL_OUTPUT_DIR}/generated/prepared_eval.parquet"
+
+    python3 "${DATAOBS_DIR}/lib/evaluation/prepare_eval_data.py" \
+        --dataset "$DATA_NAME" \
+        --input "$EVAL_DATA" \
+        --output "$PREPARED_EVAL_DATA" \
+        --method "$PROMPT_TEMPLATE_METHOD"
 
     GEN_ARGS=" \
     model.path=${MODEL_PATH} \
     model.no_chat=${IS_BASE_MODEL} \
-    data.path=${EVAL_DATA} \
+    data.path=${PREPARED_EVAL_DATA} \
     data.output_path=${GENERATION_OUTPUT} \
     data.prompt_key=${PROMPT_KEY} \
     data.n_samples=${N_SAMPLES} \

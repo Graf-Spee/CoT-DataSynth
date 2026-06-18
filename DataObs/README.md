@@ -36,10 +36,10 @@ DataObs/
 ```bash
 cd /home/hrh/CoT-DataSynth
 python DataObs/scripts/experiment_pipeline.py \
-  --experiment-id distill_smoke_gsm8k_qwen7b \
+  --experiment-id distill_smoke_gsm8k_qwen3_5_9b \
   --dataset gsm8k \
-  --base-model /data/pretrain_models/Qwen2.5-0.5B-Instruct \
-  --teacher-model /data/pretrain_models/Qwen2.5-7B-Instruct \
+  --base-model /data/pretrain_models/Qwen3.5-0.8B \
+  --teacher-model /data/pretrain_models/Qwen3.5-9B \
   --output-dir /data/hrh/COT/experiments \
   --stages distill \
   --gpu-ids 7 \

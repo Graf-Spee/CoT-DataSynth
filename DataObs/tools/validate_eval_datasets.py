@@ -11,6 +11,7 @@ import argparse
 import importlib.util
 import json
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,18 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+def _load_prepare_eval_data():
+    module_path = REPO_ROOT / "DataObs" / "lib" / "evaluation" / "prepare_eval_data.py"
+    spec = importlib.util.spec_from_file_location("prepare_eval_data_module", str(module_path))
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Failed to load prepare_eval_data module: {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.prepare_eval_data
+
+
+prepare_eval_data = _load_prepare_eval_data()
 
 
 @dataclass(frozen=True)
@@ -72,7 +85,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "gsm8k",
         ("gsm8k",),
-        "/data/open_datasets/GSM8K/test.parquet",
+        "/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
         "verl/utils/reward_score/gsm8k.py",
         "compute_score",
         True,
@@ -92,7 +105,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "humaneval",
         ("humaneval",),
-        "/data/open_datasets/humaneval/openai_humaneval/processed/test.parquet",
+        "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
         "verl/utils/reward_score/mbpp.py",
         "compute_score",
         False,
@@ -102,7 +115,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "humanevalplus",
         ("humanevalplus", "human-eval-plus"),
-        "/data/open_datasets/humanevalplus/processed/test.parquet",
+        "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
         "verl/utils/reward_score/mbpp.py",
         "compute_score",
         False,
@@ -132,7 +145,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "mbpp",
         ("mbpp",),
-        "/data/open_datasets/mbpp/sanitized/processed/test.parquet",
+        "/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
         "verl/utils/reward_score/mbpp.py",
         "compute_score",
         False,
@@ -142,7 +155,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "mbppplus",
         ("mbppplus", "mbpp-plus"),
-        "/data/open_datasets/mbppplus/processed/test.parquet",
+        "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
         "verl/utils/reward_score/mbpp.py",
         "compute_score",
         False,
@@ -152,7 +165,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "numinamath",
         ("numinamath", "numinamath-CoT"),
-        "/data/open_datasets/NuminaMath-CoT/test-processed.parquet",
+        "/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
         "verl/utils/reward_score/math_verify.py",
         "compute_score",
         True,
@@ -162,7 +175,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "strategyQA",
         ("strategyQA",),
-        "/data/open_datasets/StrategyQA/data/test-processed.parquet",
+        "/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
         "verl/utils/reward_score/truefalse.py",
         "compute_score",
         True,
@@ -270,10 +283,14 @@ def validate_spec(spec: EvalSpec, sample_idx: int, test_reward: bool) -> dict[st
         return result
 
     try:
-        df = pd.read_parquet(path)
+        with tempfile.TemporaryDirectory(prefix="dataobs_eval_validate_") as tmpdir:
+            prepared_path = Path(tmpdir) / f"{spec.name}.parquet"
+            prepared = prepare_eval_data(spec.name, str(path), str(prepared_path))
+            df = pd.read_parquet(prepared)
+            result["prepared_path"] = str(prepared)
     except Exception as exc:
         result["status"] = "read_failed"
-        result["errors"].append(f"read_parquet failed: {exc}")
+        result["errors"].append(f"prepare/read parquet failed: {type(exc).__name__}: {exc}")
         return result
 
     result["num_rows"] = int(len(df))

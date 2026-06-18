@@ -19,6 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATAOBS_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 SCRIPT_REPO_DIR="$(cd "${DATAOBS_DIR}/.." && pwd)"
 REPO_DIR="$SCRIPT_REPO_DIR"
+PROMPT_TEMPLATE_METHOD="${PROMPT_TEMPLATE_METHOD:-zeroshot}"
 
 # =========================== Load User Configs =========================
 # Find & Load Config File
@@ -66,7 +67,7 @@ case $DATA_NAME in
         ;;
     "gsm8k")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/gsm8k.py"
-        EVAL_DATA="/data/open_datasets/GSM8K/test.parquet"
+        EVAL_DATA="/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet"
         echo "[INFO] Load config for GSM8K: Success!"
         ;;
     "livecodebench")
@@ -148,6 +149,7 @@ echo "Checkpoint: $CHECKPOINT_PATH"
 echo "Base Model: $BASE_MODEL"
 echo "GPU: $GPU_ID"
 echo "Config dir: $CONFIG_DIR"
+echo "Eval data: $EVAL_DATA"
 echo "=========================================="
 
 # 检查 checkpoint 是否存在
@@ -215,18 +217,25 @@ fi
 # Stage 1: Generation
 mkdir -p ${EVAL_OUTPUT_DIR}/{generated,logs}
 GENERATION_OUTPUT="${EVAL_OUTPUT_DIR}/generated/responses.parquet"
+PREPARED_EVAL_DATA="${EVAL_OUTPUT_DIR}/generated/prepared_eval.parquet"
 
 echo ""
 echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 echo "Stage 1: Generation"
 echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
+python3 "${DATAOBS_DIR}/lib/evaluation/prepare_eval_data.py" \
+    --dataset "$DATA_NAME" \
+    --input "$EVAL_DATA" \
+    --output "$PREPARED_EVAL_DATA" \
+    --method "$PROMPT_TEMPLATE_METHOD"
+
 python3 -m verl.trainer.main_generation \
     --config-path=${CONFIG_DIR} \
     --config-name=generation \
     model.path=${MODEL_PATH} \
     model.no_chat=false \
-    data.path=${EVAL_DATA} \
+    data.path=${PREPARED_EVAL_DATA} \
     data.output_path=${GENERATION_OUTPUT} \
     data.prompt_key=prompt \
     data.n_samples=1 \

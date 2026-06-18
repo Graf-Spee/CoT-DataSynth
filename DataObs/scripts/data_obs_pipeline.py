@@ -79,7 +79,7 @@ def main():
     parser.add_argument('--output_dir', required=True, help='Output directory for experiment')
     parser.add_argument('--splits_dir', default=None, help='Path to existing splits directory (use with --skip_split)')
     parser.add_argument('--train_script', default='DataObs/lib/training/sft_dataobs.sh', help='Training script path')
-    parser.add_argument('--val_data_path', default='/data/open_datasets/GSM8K/test.parquet', help='Path to val dataset (parquet)')
+    parser.add_argument('--val_data_path', default='/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet', help='Path to val dataset (parquet)')
     parser.add_argument('--eval_data_name', default='gsm8k', help='Name of evaluation dataset')
     parser.add_argument('--prompt_template_method', default='zeroshot', help='Prompt template method for evaluation data preparation')
     

@@ -1,91 +1,92 @@
 {
   "model_root": "/data/pretrain_models",
   "student_default": {
-    "id": "qwen2_5_0_5b_instruct",
-    "name": "Qwen2.5-0.5B-Instruct",
-    "path": "/data/pretrain_models/Qwen2.5-0.5B-Instruct",
-    "family": "qwen2.5",
-    "size_b": 0.5,
-    "type": "instruct",
+    "id": "qwen3_5_0_8b",
+    "name": "Qwen3.5-0.8B",
+    "path": "/data/pretrain_models/Qwen3.5-0.8B",
+    "family": "qwen3.5",
+    "size_b": 0.8,
+    "type": "base_chat_template",
     "chat_template": "model_tokenizer",
     "recommended_tp_size": 1,
     "role": "student_base"
   },
   "primary_teacher_size_curve": [
     {
-      "id": "self_qwen2_5_0_5b_instruct",
-      "name": "Qwen2.5-0.5B-Instruct",
-      "path": "/data/pretrain_models/Qwen2.5-0.5B-Instruct",
-      "family": "qwen2.5",
-      "size_b": 0.5,
-      "type": "instruct",
+      "id": "self_qwen3_5_0_8b",
+      "name": "Qwen3.5-0.8B",
+      "path": "/data/pretrain_models/Qwen3.5-0.8B",
+      "family": "qwen3.5",
+      "size_b": 0.8,
+      "type": "base_chat_template",
       "chat_template": "model_tokenizer",
       "recommended_tp_size": 1,
       "role": "self_base_teacher",
       "purpose": "self-distillation baseline"
     },
     {
-      "id": "qwen2_5_3b_instruct",
-      "name": "Qwen2.5-3B-Instruct",
-      "path": "/data/pretrain_models/Qwen2.5-3B-Instruct",
-      "family": "qwen2.5",
-      "size_b": 3,
-      "type": "instruct",
+      "id": "qwen3_5_2b",
+      "name": "Qwen3.5-2B",
+      "path": "/data/pretrain_models/Qwen3.5-2B",
+      "family": "qwen3.5",
+      "size_b": 2,
+      "type": "base_chat_template",
       "chat_template": "model_tokenizer",
       "recommended_tp_size": 1,
       "role": "same_family_teacher",
       "purpose": "small teacher interpolation point"
     },
     {
-      "id": "qwen2_5_7b_instruct",
-      "name": "Qwen2.5-7B-Instruct",
-      "path": "/data/pretrain_models/Qwen2.5-7B-Instruct",
-      "family": "qwen2.5",
-      "size_b": 7,
-      "type": "instruct",
+      "id": "qwen3_5_4b",
+      "name": "Qwen3.5-4B",
+      "path": "/data/pretrain_models/Qwen3.5-4B",
+      "family": "qwen3.5",
+      "size_b": 4,
+      "type": "base_chat_template",
+      "chat_template": "model_tokenizer",
+      "recommended_tp_size": 1,
+      "role": "same_family_teacher",
+      "purpose": "small-medium teacher interpolation point"
+    },
+    {
+      "id": "qwen3_5_9b",
+      "name": "Qwen3.5-9B",
+      "path": "/data/pretrain_models/Qwen3.5-9B",
+      "family": "qwen3.5",
+      "size_b": 9,
+      "type": "base_chat_template",
       "chat_template": "model_tokenizer",
       "recommended_tp_size": 1,
       "role": "same_family_teacher",
       "purpose": "main medium teacher"
     },
     {
-      "id": "qwen2_5_32b_instruct",
-      "name": "Qwen2.5-32B-Instruct",
-      "path": "/data/pretrain_models/Qwen2.5-32B-Instruct",
-      "family": "qwen2.5",
-      "size_b": 32,
-      "type": "instruct",
+      "id": "qwen3_5_27b",
+      "name": "Qwen3.5-27B",
+      "path": "/data/pretrain_models/Qwen3.5-27B",
+      "family": "qwen3.5",
+      "size_b": 27,
+      "type": "base_chat_template",
       "chat_template": "model_tokenizer",
       "recommended_tp_size": 2,
       "role": "same_family_teacher",
-      "purpose": "main large teacher"
+      "purpose": "main large dense teacher"
     },
     {
-      "id": "qwen2_5_72b_instruct",
-      "name": "Qwen2.5-72B-Instruct",
-      "path": "/data/pretrain_models/Qwen2.5-72B-Instruct",
-      "family": "qwen2.5",
-      "size_b": 72,
-      "type": "instruct",
+      "id": "qwen3_5_35b_a3b",
+      "name": "Qwen3.5-35B-A3B",
+      "path": "/data/pretrain_models/Qwen3.5-35B-A3B",
+      "family": "qwen3.5",
+      "size_b": 35,
+      "active_size_b": 3,
+      "type": "moe_base_chat_template",
       "chat_template": "model_tokenizer",
       "recommended_tp_size": 4,
-      "role": "same_family_teacher",
-      "purpose": "larger teacher; run after 7B/32B are validated"
+      "role": "same_family_teacher_moe",
+      "purpose": "MoE teacher comparison; report separately from dense size curve if needed"
     }
   ],
   "reasoning_teacher_controls": [
-    {
-      "id": "deepseek_r1_distill_qwen_1_5b",
-      "name": "DeepSeek-R1-Distill-Qwen-1.5B",
-      "path": "/data/pretrain_models/DeepSeek-R1-Distill-Qwen-1.5B",
-      "family": "deepseek-r1-distill-qwen",
-      "size_b": 1.5,
-      "type": "reasoning_distill",
-      "chat_template": "model_tokenizer",
-      "recommended_tp_size": 1,
-      "role": "reasoning_teacher",
-      "purpose": "reasoning-trained small teacher comparison"
-    },
     {
       "id": "deepseek_r1_distill_qwen_7b",
       "name": "DeepSeek-R1-Distill-Qwen-7B",
@@ -96,19 +97,7 @@
       "chat_template": "model_tokenizer",
       "recommended_tp_size": 1,
       "role": "reasoning_teacher",
-      "purpose": "same-size reasoning teacher vs Qwen2.5-7B-Instruct"
-    },
-    {
-      "id": "deepseek_r1_distill_qwen_32b",
-      "name": "DeepSeek-R1-Distill-Qwen-32B",
-      "path": "/data/pretrain_models/DeepSeek-R1-Distill-Qwen-32B",
-      "family": "deepseek-r1-distill-qwen",
-      "size_b": 32,
-      "type": "reasoning_distill",
-      "chat_template": "model_tokenizer",
-      "recommended_tp_size": 2,
-      "role": "reasoning_teacher",
-      "purpose": "same-size reasoning teacher vs Qwen2.5-32B-Instruct"
+      "purpose": "reasoning-trained teacher comparison against Qwen3.5-9B"
     },
     {
       "id": "qwq_32b",
@@ -134,19 +123,7 @@
       "chat_template": "model_tokenizer",
       "recommended_tp_size": 1,
       "role": "cross_family_teacher",
-      "purpose": "cross-family 7B/8B comparison"
-    },
-    {
-      "id": "llama3_3_70b_instruct",
-      "name": "Llama-3.3-70B-Instruct",
-      "path": "/data/pretrain_models/Llama-3.3-70B-Instruct",
-      "family": "llama3.3",
-      "size_b": 70,
-      "type": "instruct",
-      "chat_template": "model_tokenizer",
-      "recommended_tp_size": 4,
-      "role": "cross_family_teacher",
-      "purpose": "cross-family larger teacher comparison"
+      "purpose": "cross-family 8B comparison against Qwen3.5-9B"
     },
     {
       "id": "gemma2_9b_it",
@@ -158,19 +135,7 @@
       "chat_template": "model_tokenizer",
       "recommended_tp_size": 1,
       "role": "cross_family_teacher",
-      "purpose": "cross-family 7B/9B comparison"
-    },
-    {
-      "id": "gemma2_27b_it",
-      "name": "gemma-2-27b-it",
-      "path": "/data/pretrain_models/gemma-2-27b-it",
-      "family": "gemma2",
-      "size_b": 27,
-      "type": "instruct",
-      "chat_template": "model_tokenizer",
-      "recommended_tp_size": 2,
-      "role": "cross_family_teacher",
-      "purpose": "cross-family medium-large comparison"
+      "purpose": "cross-family 9B comparison against Qwen3.5-9B"
     }
   ],
   "task_specialist_controls": [
@@ -184,19 +149,7 @@
       "chat_template": "model_tokenizer",
       "recommended_tp_size": 1,
       "role": "task_specialist_teacher",
-      "purpose": "math dataset specialist comparison"
-    },
-    {
-      "id": "deepseek_math_7b_instruct",
-      "name": "deepseek-math-7b-instruct",
-      "path": "/data/pretrain_models/deepseek-math-7b-instruct",
-      "family": "deepseek-math",
-      "size_b": 7,
-      "type": "math_specialist",
-      "chat_template": "model_tokenizer",
-      "recommended_tp_size": 1,
-      "role": "task_specialist_teacher",
-      "purpose": "math dataset specialist comparison"
+      "purpose": "math dataset specialist comparison; keep separate from Qwen3.5 main curve"
     },
     {
       "id": "qwen2_5_coder_7b_instruct",
@@ -208,26 +161,18 @@
       "chat_template": "model_tokenizer",
       "recommended_tp_size": 1,
       "role": "task_specialist_teacher",
-      "purpose": "code dataset specialist comparison"
-    },
-    {
-      "id": "qwen2_5_coder_32b_instruct",
-      "name": "Qwen2.5-Coder-32B-Instruct",
-      "path": "/data/pretrain_models/Qwen2.5-Coder-32B-Instruct",
-      "family": "qwen2.5-coder",
-      "size_b": 32,
-      "type": "code_specialist",
-      "chat_template": "model_tokenizer",
-      "recommended_tp_size": 2,
-      "role": "task_specialist_teacher",
-      "purpose": "code dataset specialist comparison"
+      "purpose": "code dataset specialist comparison; keep separate from Qwen3.5 main curve"
     }
   ],
+  "environment_requirements": [
+    "Qwen3.5 local configs use model_type=qwen3_5 or qwen3_5_moe.",
+    "The current verl-cot environment with transformers 4.55.0 does not recognize these architectures.",
+    "Before real runs, upgrade/patch transformers and vLLM support, then verify AutoConfig/vLLM can load Qwen3.5.",
+    "All listed Qwen3.5 paths were present under /data/pretrain_models when this registry was updated."
+  ],
   "notes": [
-    "Use primary_teacher_size_curve for the main teacher-size conclusion because family, tokenizer family, and instruct status are controlled.",
-    "Use cross_family_controls only as secondary robustness checks; do not mix them into the teacher-size curve.",
-    "Use task_specialist_controls only for matching task families such as math and code.",
-    "All listed paths were present under /data/pretrain_models when this registry was created.",
-    "The user mentioned /data/pretrained_models, but the available local directory is /data/pretrain_models."
+    "Use primary_teacher_size_curve for the main modernized teacher-size conclusion.",
+    "Report Qwen3.5-35B-A3B MoE separately from dense model size trends if its active parameter count changes interpretation.",
+    "Use cross_family_controls and task_specialist_controls only as secondary robustness checks."
   ]
 }
