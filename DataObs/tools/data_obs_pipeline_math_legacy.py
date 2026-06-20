@@ -1,6 +1,10 @@
 """
-DataObs Pipeline: End-to-end data analysis workflow
-Splits dataset, computes metrics, trains models, and analyzes correlations
+Legacy MATH-oriented DataObs pipeline.
+
+Keep this tool for old split/evaluation workflows that still expect the
+MATH-CoT defaults. New experiment recipes should use
+DataObs/scripts/experiment_pipeline.py; its metrics stage calls
+DataObs/scripts/data_obs_pipeline.py.
 """
 
 import argparse
@@ -27,7 +31,6 @@ from lib.metrics.advanced_metrics import (
     SimilarityType,
 )
 from lib.training.training_pipeline import TrainingPipeline
-from lib.training.training_pipeline_parallel import TrainingPipelineParallel
 from lib.analysis.analysis_pipeline import CorrelationAnalyzer, AnalysisVisualizer
 
 # Setup logging
