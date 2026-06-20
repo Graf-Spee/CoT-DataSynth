@@ -5,10 +5,13 @@ cd /home/hrh/CoT-DataSynth
 
 PYTHON_BIN="${PYTHON_BIN:-/home/hrh/anaconda3/envs/verl-cot/bin/python}"
 
-DRY_RUN="${DRY_RUN:---dry-run}"
+SET_TEACHER_MODEL=0
+source DataObs/experiment_instruction/_qwen_family_defaults.sh
+set_qwen_family_defaults
+
+DRY_RUN="${DRY_RUN---dry-run}"
 DATASET="${DATASET:-gsm8k}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/hrh/COT/experiments}"
-BASE_MODEL="${BASE_MODEL:-/data/pretrain_models/Qwen3.5-0.8B}"
 GPU_IDS="${GPU_IDS:-0}"
 
 EASY_SFT="${EASY_SFT:-/path/to/easy_sft.parquet}"
@@ -20,7 +23,7 @@ for item in "easy:${EASY_SFT}" "medium:${MEDIUM_SFT}" "hard:${HARD_SFT}"; do
   bucket="${item%%:*}"
   data_path="${item#*:}"
   "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-    --experiment-id exp5000_${DATASET}_difficulty_${bucket} \
+    --experiment-id exp5000_${DATASET}_${FAMILY_TAG}_difficulty_${bucket} \
     --dataset "${DATASET}" \
     --base-model "${BASE_MODEL}" \
     --output-dir "${OUTPUT_DIR}" \

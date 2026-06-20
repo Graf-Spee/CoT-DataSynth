@@ -4,6 +4,7 @@
 
 - `compute_metrics.py`: 对已有 split 补算 metrics 的 legacy 工具。
 - `experiment_dashboard.py`: 本地实验看板，按 experiment-id 查看 pipeline 阶段状态、日志、eval 指标和 GRPO 曲线。
+- `estimate_dataset_difficulty.py`: 用指定模型对每条数据重复采样并按正确次数估计 difficulty。
 - `grpo_log_metrics.py`: 从 `grpo.log` 提取 reward、entropy、KL、显存、耗时等 GRPO 指标，导出 CSV 和曲线图。
 - `validate_eval_datasets.py`: 验证 eval 数据集 schema/reward/prompt。
 - `analyze_observation_deepseek.py`: 用 DeepSeek API 生成 observation 结论。
@@ -11,6 +12,27 @@
 - `run_dataobs_eval_serial.py`: 旧 serial eval runner，依赖 `data_obs_pipeline_math_legacy.py`。
 
 主实验不要优先从这里启动，优先使用 `DataObs/scripts/experiment_pipeline.py`。
+
+## Difficulty 估计
+
+用某个模型对每道题采样 10 次，统计做对几次，得到每条数据的难度：
+
+```bash
+python DataObs/tools/estimate_dataset_difficulty.py \
+  --dataset gsm8k \
+  --model-id /data/pretrain_models/Qwen2.5-7B-Instruct \
+  --gpu-ids 0 \
+  --num-attempts 10 \
+  --output-dir /data/hrh/COT/difficulty/gsm8k_qwen2_5_7b \
+  --write-bucket-parquets
+```
+
+输出：
+
+- `<prefix>.parquet`: 每条原始数据的 `pass_count`、`pass_rate`、`difficulty_bucket`。
+- `<prefix>.candidates.parquet`: 每次采样答案和 reward 分数。
+- `<prefix>_{easy,medium,hard}.parquet`: 可选写出的原始 seed 数据分桶。
+- `<prefix>_sft_{easy,medium,hard}.parquet`: 如果传 `--sft-file distill/filtered_sft.parquet`，会按 `source_index` 切出可直接给 exp5000 使用的 SFT 分桶。
 
 ## 实验看板
 

@@ -1,11 +1,17 @@
 # Experiment Recipes
 
-这些目录按 observation 实验编号组织，每个目录里的 `commands.sh` 都是可以直接跑的命令集合。
+这些目录按 observation 实验编号组织。每个目录里的 `commands.sh` 默认跑 Qwen2.5 版本；同目录下还有三个显式 family 入口：
+
+- `commands_qwen2_5.sh`
+- `commands_qwen3.sh`
+- `commands_qwen3_5.sh`
 
 默认所有脚本都带 `--dry-run`，只打印命令和写 manifest，不启动训练/蒸馏。确认无误后这样真跑：
 
 ```bash
-DRY_RUN="" bash DataObs/experiment_instruction/exp1100_teacher_size/commands.sh
+DRY_RUN="" bash DataObs/experiment_instruction/exp1100_teacher_size/commands_qwen2_5.sh
+DRY_RUN="" bash DataObs/experiment_instruction/exp1100_teacher_size/commands_qwen3.sh
+DRY_RUN="" bash DataObs/experiment_instruction/exp1100_teacher_size/commands_qwen3_5.sh
 ```
 
 常用覆盖参数：
@@ -27,7 +33,7 @@ XL_GPU_IDS=0,1,2,3
 目录说明：
 
 - `exp1000_smoke`: 蒸馏链路 smoke test。
-- `exp1100_teacher_size`: Qwen3.5 同系列 teacher size curve。
+- `exp1100_teacher_size`: Qwen2.5 / Qwen3 / Qwen3.5 同系列 teacher size curve。
 - `exp1200_teacher_type`: reasoning / cross-family / task-specialist teacher 对照。
 - `exp2000_data_quality`: 不同质量蒸馏数据和 SFT/RL 表现。
 - `exp3000_seed_reasoning`: prompt-only teacher reasoning vs human reasoning vs answer-only。

@@ -5,11 +5,12 @@ cd /home/hrh/CoT-DataSynth
 
 PYTHON_BIN="${PYTHON_BIN:-/home/hrh/anaconda3/envs/verl-cot/bin/python}"
 
-DRY_RUN="${DRY_RUN:---dry-run}"
+source DataObs/experiment_instruction/_qwen_family_defaults.sh
+set_qwen_family_defaults
+
+DRY_RUN="${DRY_RUN---dry-run}"
 DATASET="${DATASET:-gsm8k}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/hrh/COT/experiments}"
-BASE_MODEL="${BASE_MODEL:-/data/pretrain_models/Qwen3.5-0.8B}"
-TEACHER_MODEL="${TEACHER_MODEL:-/data/pretrain_models/Qwen3.5-9B}"
 GPU_IDS="${GPU_IDS:-0}"
 if [ -z "${SEED_INPUT:-}" ]; then
   case "${DATASET}" in
@@ -24,7 +25,7 @@ if [ -z "${SEED_INPUT:-}" ]; then
     *) echo "[ERROR] Please set SEED_INPUT for DATASET=${DATASET}" >&2; exit 1 ;;
   esac
 fi
-SPLIT_DIR="${SPLIT_DIR:-${OUTPUT_DIR}/_prepared/exp3100_${DATASET}_seed_split}"
+SPLIT_DIR="${SPLIT_DIR:-${OUTPUT_DIR}/_prepared/exp3100_${DATASET}_${FAMILY_TAG}_seed_split}"
 SFT_RATIO="${SFT_RATIO:-0.5}"
 SPLIT_SEED="${SPLIT_SEED:-42}"
 TEACHER_NUM_SAMPLES="${TEACHER_NUM_SAMPLES:-4}"
@@ -48,7 +49,7 @@ RL_DISJOINT="${SPLIT_DIR}/${DATASET}_rl_train.parquet"
 RL_OVERLAP="${SPLIT_DIR}/${DATASET}_overlap_train.parquet"
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp3100_${DATASET}_settingA_sft_eq_rl_prompt \
+  --experiment-id exp3100_${DATASET}_${FAMILY_TAG}_settingA_sft_eq_rl_prompt \
   --dataset "${DATASET}" \
   --base-model "${BASE_MODEL}" \
   --teacher-model "${TEACHER_MODEL}" \
@@ -66,7 +67,7 @@ RL_OVERLAP="${SPLIT_DIR}/${DATASET}_overlap_train.parquet"
   --grpo-env TOTAL_EPOCHS=1
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp3100_${DATASET}_settingB_sft_ne_rl_prompt \
+  --experiment-id exp3100_${DATASET}_${FAMILY_TAG}_settingB_sft_ne_rl_prompt \
   --dataset "${DATASET}" \
   --base-model "${BASE_MODEL}" \
   --teacher-model "${TEACHER_MODEL}" \

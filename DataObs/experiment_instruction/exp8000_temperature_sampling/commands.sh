@@ -5,11 +5,12 @@ cd /home/hrh/CoT-DataSynth
 
 PYTHON_BIN="${PYTHON_BIN:-/home/hrh/anaconda3/envs/verl-cot/bin/python}"
 
-DRY_RUN="${DRY_RUN:---dry-run}"
+source DataObs/experiment_instruction/_qwen_family_defaults.sh
+set_qwen_family_defaults
+
+DRY_RUN="${DRY_RUN---dry-run}"
 DATASET="${DATASET:-gsm8k}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/hrh/COT/experiments}"
-BASE_MODEL="${BASE_MODEL:-/data/pretrain_models/Qwen3.5-0.8B}"
-TEACHER_MODEL="${TEACHER_MODEL:-/data/pretrain_models/Qwen3.5-9B}"
 GPU_IDS="${GPU_IDS:-0}"
 TEACHER_MAX_NEW_TOKENS="${TEACHER_MAX_NEW_TOKENS:-1024}"
 STAGES="${STAGES:-distill,metrics,sft,sft_eval,grpo,grpo_eval}"
@@ -23,7 +24,7 @@ for temp in 0.0 0.3 0.7 1.0; do
       sample_flag="--teacher-do-sample"
     fi
     "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-      --experiment-id exp8000_${DATASET}_t${temp}_n${n}_filter_on \
+      --experiment-id exp8000_${DATASET}_${FAMILY_TAG}_t${temp}_n${n}_filter_on \
       --dataset "${DATASET}" \
       --base-model "${BASE_MODEL}" \
       --teacher-model "${TEACHER_MODEL}" \
@@ -41,7 +42,7 @@ for temp in 0.0 0.3 0.7 1.0; do
 done
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp8000_${DATASET}_t0.7_n4_filter_off \
+  --experiment-id exp8000_${DATASET}_${FAMILY_TAG}_t0.7_n4_filter_off \
   --dataset "${DATASET}" \
   --base-model "${BASE_MODEL}" \
   --teacher-model "${TEACHER_MODEL}" \

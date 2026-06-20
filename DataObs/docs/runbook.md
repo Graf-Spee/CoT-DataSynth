@@ -2,6 +2,19 @@
 
 本文档对应 `DataObs/experiment_todo.md` 中的研究问题，说明每类问题应该跑哪些脚本、推荐 stages、输入数据要求和结果位置。
 
+
+
+1.评估数据集难度：
+如果你只是想估计原始数据难度，不跑 exp5000，可以不传：
+
+python DataObs/tools/estimate_dataset_difficulty.py \
+  --dataset gsm8k \
+  --model-id /data/pretrain_models/Qwen2.5-7B-Instruct \
+  --gpu-ids 0 \
+  --num-attempts 10 \
+  --output-dir /data/hrh/COT/difficulty/gsm8k_qwen2_5_7b
+
+
 统一入口：
 
 ```bash
@@ -45,7 +58,6 @@ DataObs/experiment_instruction/
 - 主数据集优先级：建议先 `gsm8k`，再 `math-500`，然后 `arc-challenge/strategyQA`；代码类单独排期。
 - GPU 分配：`GPU_IDS` 给 0.5B/3B/7B，`BIG_GPU_IDS` 给 32B，`XL_GPU_IDS` 给 72B；需要确认哪些卡空闲。
 - teacher size 主线是否先只跑 `self/7B/32B`：建议先跑这三个，趋势稳定后补 `3B/72B`。
-- 每个 distill 的样本规模：先 smoke `8/32`，正式建议先 `1k` 或全量由你确认。
 - 固定训练预算方式：size 实验要确认是固定 epoch，还是固定 optimizer steps / token budget。
 - human reasoning 数据来源：如果要做 exp3000，需要你指定 human reasoning parquet 或原始数据路径。
 - difficulty/diversity/size 子集文件路径：exp5000/6000/7000 需要先构造这些 parquet。
@@ -53,7 +65,6 @@ DataObs/experiment_instruction/
 - 代码类 RL 是否现在纳入：`mbpp/mbppplus/humaneval/humanevalplus` 已接 router，但训练会慢；`livecodebench` 还需要补 router。
 
 ## -0. Recipes 索引
-
 - `exp1000_smoke`: 先确认 distill 格式、reward filter、输出 parquet。
 - `exp1100_teacher_size`: Qwen2.5-Instruct 同系列 teacher size curve，回答“更大 teacher 是否有意义 / 自蒸馏是否有意义”。
 - `exp1200_teacher_type`: reasoning teacher、跨系列 teacher、任务专家 teacher 对照。

@@ -5,10 +5,11 @@ cd /home/hrh/CoT-DataSynth
 
 PYTHON_BIN="${PYTHON_BIN:-/home/hrh/anaconda3/envs/verl-cot/bin/python}"
 
-DRY_RUN="${DRY_RUN:---dry-run}"
+source DataObs/experiment_instruction/_qwen_family_defaults.sh
+set_qwen_family_defaults
+
+DRY_RUN="${DRY_RUN---dry-run}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/hrh/COT/experiments}"
-BASE_MODEL="${BASE_MODEL:-/data/pretrain_models/Qwen3.5-0.8B}"
-TEACHER_MODEL="${TEACHER_MODEL:-/data/pretrain_models/Qwen3.5-0.8B}"
 GPU_IDS="${GPU_IDS:-0}"
 SMOKE_NUM_ROWS="${SMOKE_NUM_ROWS:-8}"
 TEACHER_MAX_NEW_TOKENS="${TEACHER_MAX_NEW_TOKENS:-512}"
@@ -18,7 +19,7 @@ TEACHER_BATCH_SIZE="${TEACHER_BATCH_SIZE:-2}"
 # To actually run, use: DRY_RUN="" bash DataObs/experiment_instruction/exp1000_smoke/commands.sh
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1000_gsm8k_distill_smoke \
+  --experiment-id exp1000_${FAMILY_TAG}_gsm8k_distill_smoke \
   --dataset gsm8k \
   --base-model "${BASE_MODEL}" \
   --teacher-model "${TEACHER_MODEL}" \
@@ -30,7 +31,7 @@ TEACHER_BATCH_SIZE="${TEACHER_BATCH_SIZE:-2}"
   --teacher-batch-size "${TEACHER_BATCH_SIZE}"
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1000_math500_distill_smoke \
+  --experiment-id exp1000_${FAMILY_TAG}_math500_distill_smoke \
   --dataset math-500 \
   --base-model "${BASE_MODEL}" \
   --teacher-model "${TEACHER_MODEL}" \
@@ -42,7 +43,7 @@ TEACHER_BATCH_SIZE="${TEACHER_BATCH_SIZE:-2}"
   --teacher-batch-size "${TEACHER_BATCH_SIZE}"
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1000_arc_distill_smoke \
+  --experiment-id exp1000_${FAMILY_TAG}_arc_distill_smoke \
   --dataset arc-challenge \
   --base-model "${BASE_MODEL}" \
   --teacher-model "${TEACHER_MODEL}" \
@@ -54,7 +55,7 @@ TEACHER_BATCH_SIZE="${TEACHER_BATCH_SIZE:-2}"
   --teacher-batch-size "${TEACHER_BATCH_SIZE}"
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1000_strategyqa_distill_smoke \
+  --experiment-id exp1000_${FAMILY_TAG}_strategyqa_distill_smoke \
   --dataset strategyQA \
   --base-model "${BASE_MODEL}" \
   --teacher-model "${TEACHER_MODEL}" \
@@ -66,7 +67,7 @@ TEACHER_BATCH_SIZE="${TEACHER_BATCH_SIZE:-2}"
   --teacher-batch-size "${TEACHER_BATCH_SIZE}"
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1000_mbpp_distill_smoke \
+  --experiment-id exp1000_${FAMILY_TAG}_mbpp_distill_smoke \
   --dataset mbpp \
   --base-model "${BASE_MODEL}" \
   --teacher-model "${TEACHER_MODEL}" \

@@ -5,10 +5,13 @@ cd /home/hrh/CoT-DataSynth
 
 PYTHON_BIN="${PYTHON_BIN:-/home/hrh/anaconda3/envs/verl-cot/bin/python}"
 
-DRY_RUN="${DRY_RUN:---dry-run}"
+SET_TEACHER_MODEL=0
+source DataObs/experiment_instruction/_qwen_family_defaults.sh
+set_qwen_family_defaults
+
+DRY_RUN="${DRY_RUN---dry-run}"
 DATASET="${DATASET:-gsm8k}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/hrh/COT/experiments}"
-BASE_MODEL="${BASE_MODEL:-/data/pretrain_models/Qwen3.5-0.8B}"
 GPU_IDS="${GPU_IDS:-0}"
 BIG_GPU_IDS="${BIG_GPU_IDS:-0,1}"
 TEACHER_NUM_SAMPLES="${TEACHER_NUM_SAMPLES:-4}"
@@ -20,7 +23,7 @@ STAGES="${STAGES:-distill,metrics,sft,sft_eval,grpo,grpo_eval}"
 # Keep these results separate from exp1100 teacher-size curve.
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1200_${DATASET}_reasoning_deepseek_r1_qwen7b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
+  --experiment-id exp1200_${DATASET}_${FAMILY_TAG}_reasoning_deepseek_r1_qwen7b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
   --dataset "${DATASET}" \
   --base-model "${BASE_MODEL}" \
   --teacher-model /data/pretrain_models/DeepSeek-R1-Distill-Qwen-7B \
@@ -36,7 +39,7 @@ STAGES="${STAGES:-distill,metrics,sft,sft_eval,grpo,grpo_eval}"
   --grpo-env TOTAL_EPOCHS=1
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1200_${DATASET}_reasoning_qwq32b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
+  --experiment-id exp1200_${DATASET}_${FAMILY_TAG}_reasoning_qwq32b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
   --dataset "${DATASET}" \
   --base-model "${BASE_MODEL}" \
   --teacher-model /data/pretrain_models/QwQ-32B \
@@ -54,7 +57,7 @@ STAGES="${STAGES:-distill,metrics,sft,sft_eval,grpo,grpo_eval}"
   --grpo-env TOTAL_EPOCHS=1
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1200_${DATASET}_cross_llama3_1_8b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
+  --experiment-id exp1200_${DATASET}_${FAMILY_TAG}_cross_llama3_1_8b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
   --dataset "${DATASET}" \
   --base-model "${BASE_MODEL}" \
   --teacher-model /data/pretrain_models/Llama-3.1-8B-Instruct \
@@ -70,7 +73,7 @@ STAGES="${STAGES:-distill,metrics,sft,sft_eval,grpo,grpo_eval}"
   --grpo-env TOTAL_EPOCHS=1
 
 "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-  --experiment-id exp1200_${DATASET}_cross_gemma2_9b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
+  --experiment-id exp1200_${DATASET}_${FAMILY_TAG}_cross_gemma2_9b_t${TEACHER_TEMPERATURE}_n${TEACHER_NUM_SAMPLES} \
   --dataset "${DATASET}" \
   --base-model "${BASE_MODEL}" \
   --teacher-model /data/pretrain_models/gemma-2-9b-it \

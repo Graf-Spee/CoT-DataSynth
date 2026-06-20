@@ -33,6 +33,13 @@ DataObs/
 
 ## Main Pipeline
 
+常用指令：
+python DataObs/tools/experiment_dashboard.py \
+  --experiments-root /data/hrh/COT/experiments \
+  --host 127.0.0.1 \
+  --port 7860
+
+
 ```bash
 cd /home/hrh/CoT-DataSynth
 python DataObs/scripts/experiment_pipeline.py \

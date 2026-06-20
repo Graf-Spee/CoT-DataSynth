@@ -5,10 +5,13 @@ cd /home/hrh/CoT-DataSynth
 
 PYTHON_BIN="${PYTHON_BIN:-/home/hrh/anaconda3/envs/verl-cot/bin/python}"
 
-DRY_RUN="${DRY_RUN:---dry-run}"
+SET_TEACHER_MODEL=0
+source DataObs/experiment_instruction/_qwen_family_defaults.sh
+set_qwen_family_defaults
+
+DRY_RUN="${DRY_RUN---dry-run}"
 DATASET="${DATASET:-gsm8k}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/hrh/COT/experiments}"
-BASE_MODEL="${BASE_MODEL:-/data/pretrain_models/Qwen3.5-0.8B}"
 GPU_IDS="${GPU_IDS:-0}"
 
 # Fill these with distilled parquet files produced by exp1100/exp1200 or manual filters.
@@ -21,7 +24,7 @@ for variant in low mid high; do
   data_var="QUALITY_${variant^^}_SFT"
   data_path="${!data_var}"
   "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-    --experiment-id exp2000_${DATASET}_quality_${variant} \
+    --experiment-id exp2000_${DATASET}_${FAMILY_TAG}_quality_${variant} \
     --dataset "${DATASET}" \
     --base-model "${BASE_MODEL}" \
     --output-dir "${OUTPUT_DIR}" \
