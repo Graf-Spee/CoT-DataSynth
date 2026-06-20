@@ -35,6 +35,10 @@ DATASET_NAME="${3:-gsm8k}"
 EVAL_OUTPUT_DIR="${4:-}"
 GPU_IDS="${5:-0}"
 
+# The GRPO actor merge happens before eval_dataobs.sh is called, so the
+# visible-device mapping must be set here as well.
+export CUDA_VISIBLE_DEVICES="$GPU_IDS"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATAOBS_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REPO_DIR="$(cd "${DATAOBS_DIR}/.." && pwd)"

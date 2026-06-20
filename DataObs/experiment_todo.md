@@ -33,11 +33,11 @@
 
 ## 1. P0：先保证链路能跑
 
-- [ ] 修复 DataObs 训练阶段参数 bug：`DataObs/scripts/data_obs_pipeline.py` 调 `run_all_trainings(..., eval_data_path=...)`，但 `TrainingPipeline.run_all_trainings` 没有 `eval_data_path` 参数，当前会 TypeError。
-- [ ] 修复 DataObs evaluation 参数语义：`DataObs/lib/evaluation/eval_dataobs.sh` 第 3 个参数要的是 dataset name，如 `gsm8k` / `math-500`，但 DataObs pipeline 当前用 `eval_data_path` 调 `run_evaluation`，会导致 dataset case 匹配失败。
-- [ ] 修复 DataObs parallel pipeline 调用签名：`TrainingPipelineParallel.prepare_training_configs` 的签名和 `data_obs_pipeline.py` 调用方式不一致，`--parallel` 当前高概率不能正常跑。
+- [x] 对齐 DataObs 训练阶段参数：`DataObs/scripts/data_obs_pipeline.py` 当前调用 `run_all_trainings(..., eval_data_name=..., prompt_template_method=...)`，不再使用旧的 `eval_data_path` 参数。
+- [x] 对齐 DataObs evaluation 参数语义：当前 Python-native `TrainingPipeline.run_evaluation` 接收 dataset name，例如 `gsm8k` / `math-500`，不再把 eval parquet path 当成 dataset name 传递。
+- [x] 明确 `--parallel` 行为：`DataObs/scripts/data_obs_pipeline.py` 当前忽略 `--parallel` 并使用顺序 `TrainingPipeline`；显存感知并行调度保留为 legacy 实现，后续若恢复需要单独对齐接口。
 - [ ] 明确 SFT 数据格式转换：`DataObs/lib/training/sft_dataobs.sh` 使用 `question`/`answer` 列；RL/eval 使用 `prompt`/`data_source`/`reward_model` 列。需要为每个数据版本保存两份或一个统一转换脚本。
-- [ ] 增加 run manifest：每次蒸馏、SFT、RL、eval 都写一个 `manifest.json`，记录模型、数据、超参、代码 commit、输出路径。
+- [x] 主实验入口增加 run manifest：`DataObs/scripts/experiment_pipeline.py` 会写 `manifest.json`、`commands.jsonl` 和 `results.json`。旧 DataObs split pipeline 的 manifest 仍可另行补齐。
 - [ ] 增加实验总表 `experiments.csv` 或 `runs.jsonl`，后续分析不要从目录名猜实验条件。
 - [ ] 为每个入口加 smoke test：小数据 8-32 条，确认 distill -> SFT -> eval -> GRPO -> eval 全链路可完成。
 
@@ -459,16 +459,16 @@ TODO：
 - [ ] `scripts/collect_experiment_results.py`，合并 distill metrics、SFT eval、RL eval、RL logs。
 - [ ] `scripts/parse_grpo_logs.py`，抽取 entropy、reward、validation score、best step、convergence step。
 - [ ] `scripts/make_controlled_subsets.py`，按 size/difficulty/diversity 生成控制变量子集。
-- [ ] 修复 DataObs pipeline 的 eval/train/parallel 参数问题。
+- [x] 修复 DataObs pipeline 的 eval/train 参数问题，并明确 `--parallel` 当前被忽略；恢复并行调度需另开任务。
 - [ ] 扩展 `reward_fn_router.py`，至少补齐你要做 RL 的数据源。
 
 ## 7. 当前最重要的风险
 
 - 数据格式不统一：SFT、RL、eval 三套入口使用不同列名。
-- DataObs pipeline 当前有参数 bug，不能直接依赖它一键完成训练+评测。
+- `DataObs/scripts/data_obs_pipeline.py` 的旧参数 bug 已对齐；当前主实验建议仍优先走 `DataObs/scripts/experiment_pipeline.py`，旧 split pipeline 主要用于 metrics/split/相关性流程。
 - 蒸馏脚本已支持主数据集；剩余风险是代码类 filter 会执行测试、BFCL 不走这个链路、RL reward router 仍需单独补齐。
 - RL 结果没有标准化解析，无法回答 entropy、收敛 step、SFT-RL 相关性。
-- 没有 manifest，后续容易无法追踪某个 checkpoint 对应哪个 teacher/data/temperature。
+- 主入口已写 `manifest.json`；旧 split pipeline 和部分辅助工具的 manifest 仍不完整，后续如果继续使用这些旧入口需要补齐。
 - 大 teacher 蒸馏成本高，必须先用 smoke subset 验证格式和评测链路。
 
 ## 8. 最小可执行命令草案

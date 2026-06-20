@@ -148,6 +148,9 @@ if [ "$STRICT_PATH_CHECK" = "1" ]; then
     [ -f "$REWARD_ROUTER" ] || { echo "[ERROR] Reward router not found: $REWARD_ROUTER"; exit 1; }
 fi
 
+export CUDA_VISIBLE_DEVICES="$GPU_IDS"
+N_GPUS_PER_NODE="$(echo "$GPU_IDS" | tr ',' ' ' | wc -w)"
+
 SFT_MODEL_PATH="$(resolve_sft_path "$SFT_INPUT")"
 MODEL_PATH="$SFT_MODEL_PATH"
 
@@ -174,9 +177,6 @@ if [ -f "$SFT_MODEL_PATH/adapter_model.safetensors" ]; then
     fi
     MODEL_PATH="$MERGED_MODEL_PATH"
 fi
-
-export CUDA_VISIBLE_DEVICES="$GPU_IDS"
-N_GPUS_PER_NODE="$(echo "$GPU_IDS" | tr ',' ' ' | wc -w)"
 
 TP_SIZE="${TP_SIZE:-1}"
 if [ $((N_GPUS_PER_NODE % TP_SIZE)) -ne 0 ]; then

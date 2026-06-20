@@ -1,9 +1,9 @@
 """
-DataObs Pipeline: End-to-end data analysis workflow
-Splits dataset, computes metrics, trains models, and analyzes correlations
+DataObs metrics/split pipeline.
 
-Deprecated: use scripts/data_obs_pipeline_test.py instead. This file is kept
-temporarily until the replacement pipeline has been fully validated.
+This entrypoint is still used by experiment_pipeline.py for the metrics stage.
+Training and evaluation paths use the current TrainingPipeline implementation;
+the older parallel scheduler is no longer selected from this script.
 """
 
 import argparse
@@ -30,7 +30,6 @@ from lib.metrics.advanced_metrics import (
     SimilarityType,
 )
 from lib.training.training_pipeline import TrainingPipeline
-from lib.training.training_pipeline_parallel import TrainingPipelineParallel
 from lib.analysis.analysis_pipeline import CorrelationAnalyzer, AnalysisVisualizer
 
 # Setup logging
@@ -65,11 +64,6 @@ def load_data(data_path: str) -> List[dict]:
 
 
 def main():
-    logger.warning(
-        "DataObs/scripts/data_obs_pipeline.py is deprecated. "
-        "Use DataObs/scripts/data_obs_pipeline_test.py instead."
-    )
-
     parser = argparse.ArgumentParser(
         description='DataObs Pipeline: Data analysis and training workflow'
     )
