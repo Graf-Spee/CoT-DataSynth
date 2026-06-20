@@ -5,10 +5,13 @@ cd /home/hrh/CoT-DataSynth
 
 PYTHON_BIN="${PYTHON_BIN:-/home/hrh/anaconda3/envs/verl-cot/bin/python}"
 
-DRY_RUN="${DRY_RUN:---dry-run}"
+SET_TEACHER_MODEL=0
+source DataObs/experiment_instruction/_qwen_family_defaults.sh
+set_qwen_family_defaults
+
+DRY_RUN="${DRY_RUN---dry-run}"
 DATASET="${DATASET:-gsm8k}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/hrh/COT/experiments}"
-BASE_MODEL="${BASE_MODEL:-/data/pretrain_models/Qwen3.5-0.8B}"
 GPU_IDS="${GPU_IDS:-0}"
 
 SIZE_1K_SFT="${SIZE_1K_SFT:-/path/to/1k_sft.parquet}"
@@ -20,7 +23,7 @@ for item in "1k:${SIZE_1K_SFT}" "5k:${SIZE_5K_SFT}" "10k:${SIZE_10K_SFT}"; do
   bucket="${item%%:*}"
   data_path="${item#*:}"
   "${PYTHON_BIN}" DataObs/scripts/experiment_pipeline.py ${DRY_RUN} \
-    --experiment-id exp7000_${DATASET}_size_${bucket} \
+    --experiment-id exp7000_${DATASET}_${FAMILY_TAG}_size_${bucket} \
     --dataset "${DATASET}" \
     --base-model "${BASE_MODEL}" \
     --output-dir "${OUTPUT_DIR}" \
