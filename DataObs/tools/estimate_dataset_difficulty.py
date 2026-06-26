@@ -12,6 +12,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -57,6 +58,45 @@ def difficulty_bucket(pass_count: int, *, hard_max_correct: int, easy_min_correc
     if pass_count >= easy_min_correct:
         return "easy"
     return "medium"
+
+
+def extract_gsm8k_ground_truth(answer: Any) -> str:
+    text = str(answer)
+    matches = re.findall(r"####\s*([-+]?\d[\d,]*(?:\.\d+)?)", text)
+    if matches:
+        return matches[-1].replace(",", "").strip()
+
+    numbers = re.findall(r"[-+]?\d[\d,]*(?:\.\d+)?", text)
+    if not numbers:
+        raise ValueError(f"Cannot extract GSM8K ground truth from answer: {text[:120]}")
+    return numbers[-1].replace(",", "").strip()
+
+
+def normalize_input_dataframe(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
+    if {"prompt", "reward_model"}.issubset(df.columns):
+        out = df.copy()
+        if "data_source" not in out.columns:
+            out["data_source"] = dataset
+        return out
+
+    if dataset == "gsm8k" and {"question", "answer"}.issubset(df.columns):
+        return pd.DataFrame(
+            {
+                "prompt": df["question"].map(str),
+                "reward_model": df["answer"].map(
+                    lambda answer: {"style": "rule", "ground_truth": extract_gsm8k_ground_truth(answer)}
+                ),
+                "data_source": "gsm8k",
+                "raw_answer": df["answer"].map(str),
+            },
+            index=df.index,
+        )
+
+    columns = ", ".join(map(str, df.columns))
+    raise ValueError(
+        "Input parquet must contain prompt/reward_model columns, or raw GSM8K "
+        f"question/answer columns. Got columns: {columns}"
+    )
 
 
 def prepare_rows(df: pd.DataFrame, dataset: str) -> list[dict[str, Any]]:
@@ -156,6 +196,7 @@ def run(args: argparse.Namespace) -> None:
     df = pd.read_parquet(input_path)
     if args.max_rows > 0:
         df = df.head(args.max_rows)
+    df = normalize_input_dataframe(df, dataset)
 
     prepared_rows = prepare_rows(df, dataset)
     compute_score = _load_reward_functions(dataset)
