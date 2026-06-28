@@ -55,7 +55,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "arc-challenge",
         ("arc-challenge", "ai2_arc", "ai2-arc"),
-        "/data/open_datasets/ai2_arc/ARC-Challenge/test-processed.parquet",
+        "/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
         "verl/utils/reward_score/multiple_choice.py",
         "compute_score",
         True,
@@ -65,7 +65,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "aqua_rat",
         ("aqua_rat", "aqua-rat"),
-        "/data/open_datasets/aqua_rat/processed/test-processed.parquet",
+        "/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
         "verl/utils/reward_score/multiple_choice.py",
         "compute_score",
         True,
@@ -75,7 +75,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "commonsenseQA",
         ("commonsenseQA",),
-        "/data/open_datasets/CommonsenseQA/data/validation-processed.parquet",
+        "/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
         "verl/utils/reward_score/multiple_choice.py",
         "compute_score",
         True,
@@ -91,16 +91,6 @@ SPECS: list[EvalSpec] = [
         True,
         "math_word_problem",
         'Final answer should include the numeric answer; prompts ask to output after "####".',
-    ),
-    EvalSpec(
-        "livecodebench",
-        ("livecodebench",),
-        "/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet",
-        "verl/utils/reward_score/livecodebench.py",
-        "compute_score",
-        False,
-        "code_generation",
-        "Final answer should be Python code in a markdown code block.",
     ),
     EvalSpec(
         "humaneval",
@@ -125,7 +115,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "math",
         ("math",),
-        "/data/open_datasets/MATH/train_processed.parquet",
+        "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
         "verl/utils/reward_score/math_verify.py",
         "compute_score",
         True,
@@ -135,7 +125,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "math-500",
         ("math-500",),
-        "/data/open_datasets/MATH-500/test-processed.parquet",
+        "/data/open_datasets/MATH-500/test.parquet",
         "verl/utils/reward_score/math_verify.py",
         "compute_score",
         True,

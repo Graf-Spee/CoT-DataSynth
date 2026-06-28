@@ -38,15 +38,15 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DATASET_CONFIG: dict[str, dict[str, Any]] = {
     "arc-challenge": {
         "reward": "verl/utils/reward_score/multiple_choice.py",
-        "eval_data": "/data/open_datasets/ai2_arc/ARC-Challenge/test-processed.parquet",
+        "eval_data": "/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
     },
     "aqua_rat": {
         "reward": "verl/utils/reward_score/multiple_choice.py",
-        "eval_data": "/data/open_datasets/aqua_rat/processed/test-processed.parquet",
+        "eval_data": "/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
     },
     "commonsenseQA": {
         "reward": "verl/utils/reward_score/multiple_choice.py",
-        "eval_data": "/data/open_datasets/CommonsenseQA/data/validation-processed.parquet",
+        "eval_data": "/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
     },
     "gsm8k": {
         "reward": "verl/utils/reward_score/gsm8k.py",
@@ -54,39 +54,31 @@ DATASET_CONFIG: dict[str, dict[str, Any]] = {
     },
     "humaneval": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/humaneval/openai_humaneval/processed/test.parquet",
+        "eval_data": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
     },
     "humanevalplus": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/humanevalplus/processed/test.parquet",
-    },
-    "livecodebench": {
-        "reward": "verl/utils/reward_score/livecodebench.py",
-        "eval_data": "/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet",
-    },
-    "math": {
-        "reward": "verl/utils/reward_score/math_verify.py",
-        "eval_data": "/data/open_datasets/MATH/train_processed.parquet",
+        "eval_data": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
     },
     "math-500": {
         "reward": "verl/utils/reward_score/math_verify.py",
-        "eval_data": "/data/open_datasets/MATH-500/test-processed.parquet",
+        "eval_data": "/data/open_datasets/MATH-500/test.parquet",
     },
     "mbpp": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/mbpp/sanitized/processed/test.parquet",
+        "eval_data": "/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
     },
     "mbppplus": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/mbppplus/processed/test.parquet",
+        "eval_data": "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
     },
     "numinamath": {
         "reward": "verl/utils/reward_score/math_verify.py",
-        "eval_data": "/data/open_datasets/NuminaMath-CoT/test-processed.parquet",
+        "eval_data": "/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
     },
     "strategyQA": {
         "reward": "verl/utils/reward_score/truefalse.py",
-        "eval_data": "/data/open_datasets/StrategyQA/data/test-processed.parquet",
+        "eval_data": "/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
     },
 }
 

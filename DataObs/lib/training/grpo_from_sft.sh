@@ -35,8 +35,8 @@ Usage:
 Examples:
   # Use a DataObs split SFT output directory. The script will pick checkpoint-last or the latest global_step_*.
   bash $0 /data/hrh/COT/GSM8K/training/split_0 \\
-    /data/open_datasets/GSM8K/train.parquet \\
-    /data/open_datasets/GSM8K/test.parquet \\
+    /data/open_datasets/GSM8K/main/train-00000-of-00001.parquet \\
+    /data/open_datasets/GSM8K/main/test-00000-of-00001.parquet \\
     0,1,2,3 \\
     /data/hrh/COT/GSM8K/grpo/split_0 \\
     /data/pretrain_models/Qwen2.5-0.5B-Instruct

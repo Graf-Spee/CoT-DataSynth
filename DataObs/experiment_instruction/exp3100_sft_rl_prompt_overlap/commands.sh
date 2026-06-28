@@ -14,14 +14,14 @@ OUTPUT_DIR="${OUTPUT_DIR:-/data/hrh/COT/experiments}"
 GPU_IDS="${GPU_IDS:-0}"
 if [ -z "${SEED_INPUT:-}" ]; then
   case "${DATASET}" in
-    gsm8k) SEED_INPUT="/data/open_datasets/GSM8K/train.parquet" ;;
-    math|math-500) SEED_INPUT="/data/open_datasets/MATH/train_processed.parquet" ;;
-    arc-challenge|ai2_arc) SEED_INPUT="/data/open_datasets/ai2_arc/ARC-Challenge/train-processed.parquet" ;;
-    aqua_rat) SEED_INPUT="/data/open_datasets/aqua_rat/processed/train-processed.parquet" ;;
-    strategyQA|strategyqa) SEED_INPUT="/data/open_datasets/StrategyQA/data/train-processed.parquet" ;;
-    commonsenseQA|commonsenseqa) SEED_INPUT="/data/open_datasets/CommonsenseQA/data/train-processed.parquet" ;;
-    numinamath) SEED_INPUT="/data/open_datasets/NuminaMath-CoT/train-processed-0.parquet" ;;
-    mbpp) SEED_INPUT="/data/open_datasets/mbpp/sanitized/processed/test.parquet" ;;
+    gsm8k) SEED_INPUT="/data/open_datasets/GSM8K/main/train-00000-of-00001.parquet" ;;
+    math|math-500) SEED_INPUT="/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet" ;;
+    arc-challenge|ai2_arc) SEED_INPUT="/data/open_datasets/ai2_arc/ARC-Challenge/train-00000-of-00001.parquet" ;;
+    aqua_rat) SEED_INPUT="/data/open_datasets/aqua_rat/raw/train-00000-of-00001.parquet" ;;
+    strategyQA|strategyqa) SEED_INPUT="/data/open_datasets/StrategyQA/data/train-00000-of-00001-506370352f622815.parquet" ;;
+    commonsenseQA|commonsenseqa) SEED_INPUT="/data/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet" ;;
+    numinamath) SEED_INPUT="/data/open_datasets/NuminaMath-CoT/data/train-00000-of-00005.parquet" ;;
+    mbpp) SEED_INPUT="/data/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet" ;;
     *) echo "[ERROR] Please set SEED_INPUT for DATASET=${DATASET}" >&2; exit 1 ;;
   esac
 fi

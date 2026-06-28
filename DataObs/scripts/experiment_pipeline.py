@@ -28,64 +28,59 @@ DATASET_DEFAULTS: dict[str, dict[str, str]] = {
         "rl_val": "/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
     },
     "math-500": {
-        "distill_input": "/data/open_datasets/MATH/train_processed.parquet",
-        "rl_train": "/data/open_datasets/MATH/train_processed.parquet",
-        "rl_val": "/data/open_datasets/MATH-500/test-processed.parquet",
+        "distill_input": "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_train": "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_val": "/data/open_datasets/MATH-500/test.parquet",
     },
     "math": {
-        "distill_input": "/data/open_datasets/MATH/train_processed.parquet",
-        "rl_train": "/data/open_datasets/MATH/train_processed.parquet",
-        "rl_val": "/data/open_datasets/MATH/train_processed.parquet",
+        "distill_input": "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_train": "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_val": "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
     },
     "aqua_rat": {
-        "distill_input": "/data/open_datasets/aqua_rat/processed/train-processed.parquet",
-        "rl_train": "/data/open_datasets/aqua_rat/processed/train-processed.parquet",
-        "rl_val": "/data/open_datasets/aqua_rat/processed/test-processed.parquet",
+        "distill_input": "/data/open_datasets/aqua_rat/raw/train-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/aqua_rat/raw/train-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
     },
     "arc-challenge": {
-        "distill_input": "/data/open_datasets/ai2_arc/ARC-Challenge/train-processed.parquet",
-        "rl_train": "/data/open_datasets/ai2_arc/ARC-Challenge/train-processed.parquet",
-        "rl_val": "/data/open_datasets/ai2_arc/ARC-Challenge/test-processed.parquet",
+        "distill_input": "/data/open_datasets/ai2_arc/ARC-Challenge/train-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/ai2_arc/ARC-Challenge/train-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
     },
     "strategyQA": {
-        "distill_input": "/data/open_datasets/StrategyQA/data/train-processed.parquet",
-        "rl_train": "/data/open_datasets/StrategyQA/data/train-processed.parquet",
-        "rl_val": "/data/open_datasets/StrategyQA/data/test-processed.parquet",
+        "distill_input": "/data/open_datasets/StrategyQA/data/train-00000-of-00001-506370352f622815.parquet",
+        "rl_train": "/data/open_datasets/StrategyQA/data/train-00000-of-00001-506370352f622815.parquet",
+        "rl_val": "/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
     },
     "commonsenseQA": {
-        "distill_input": "/data/open_datasets/CommonsenseQA/data/train-processed.parquet",
-        "rl_train": "/data/open_datasets/CommonsenseQA/data/train-processed.parquet",
-        "rl_val": "/data/open_datasets/CommonsenseQA/data/validation-processed.parquet",
+        "distill_input": "/data/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
     },
     "mbpp": {
-        "distill_input": "/data/open_datasets/mbpp/sanitized/processed/train-full.parquet",
-        "rl_train": "/data/open_datasets/mbpp/sanitized/processed/train-full.parquet",
-        "rl_val": "/data/open_datasets/mbpp/sanitized/processed/test.parquet",
+        "distill_input": "/data/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
     },
     "mbppplus": {
         "distill_input": "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
-        "rl_train": "/data/open_datasets/mbppplus/processed/test.parquet",
-        "rl_val": "/data/open_datasets/mbppplus/processed/test.parquet",
+        "rl_train": "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+        "rl_val": "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
     },
     "humaneval": {
         "distill_input": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
-        "rl_train": "/data/open_datasets/humaneval/openai_humaneval/processed/test.parquet",
-        "rl_val": "/data/open_datasets/humaneval/openai_humaneval/processed/test.parquet",
+        "rl_train": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
     },
     "humanevalplus": {
         "distill_input": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
-        "rl_train": "/data/open_datasets/humanevalplus/processed/test.parquet",
-        "rl_val": "/data/open_datasets/humanevalplus/processed/test.parquet",
-    },
-    "livecodebench": {
-        "distill_input": "/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet",
-        "rl_train": "/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet",
-        "rl_val": "/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet",
+        "rl_train": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+        "rl_val": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
     },
     "numinamath": {
-        "distill_input": "/data/open_datasets/NuminaMath-CoT/train-processed-0.parquet",
-        "rl_train": "/data/open_datasets/NuminaMath-CoT/train-processed-0.parquet",
-        "rl_val": "/data/open_datasets/NuminaMath-CoT/test-processed.parquet",
+        "distill_input": "/data/open_datasets/NuminaMath-CoT/data/train-00000-of-00005.parquet",
+        "rl_train": "/data/open_datasets/NuminaMath-CoT/data/train-00000-of-00005.parquet",
+        "rl_val": "/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
     },
 }
 
@@ -105,8 +100,6 @@ def normalize_dataset_key(name: str) -> str:
         return "humaneval"
     if key in {"humanevalplus", "humaneval+"}:
         return "humanevalplus"
-    if key in {"livecodebench", "lcb"}:
-        return "livecodebench"
     if key == "math":
         return "math"
     if key == "math500":

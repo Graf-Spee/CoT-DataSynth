@@ -62,7 +62,7 @@ DataObs/experiment_instruction/
 - human reasoning 数据来源：如果要做 exp3000，需要你指定 human reasoning parquet 或原始数据路径。
 - difficulty/diversity/size 子集文件路径：exp5000/6000/7000 需要先构造这些 parquet。
 - GRPO 是否每组都跑：为了省算力，可以先跑 `distill,metrics,sft,sft_eval`，筛出有希望的组再跑 `grpo,grpo_eval`。
-- 代码类 RL 是否现在纳入：`mbpp/mbppplus/humaneval/humanevalplus` 已接 router，但训练会慢；`livecodebench` 还需要补 router。
+- 代码类 RL 是否现在纳入：`mbpp/mbppplus/humaneval/humanevalplus` 已接 router，但训练会慢；还需要补 router。
 
 ## -0. Recipes 索引
 - `exp1000_smoke`: 先确认 distill 格式、reward filter、输出 parquet。
@@ -173,7 +173,7 @@ python3 DataObs/scripts/experiment_pipeline.py \
   --stages distill,metrics,sft,sft_eval,grpo,grpo_eval \
   --gpu-ids 0 \
   --distill-dataset gsm8k \
-  --distill-input /data/open_datasets/GSM8K/train.parquet \
+  --distill-input /data/open_datasets/GSM8K/main/train-00000-of-00001.parquet \
   --teacher-num-samples 4 \
   --teacher-temperature 0.7 \
   --sft-epochs 1 \
@@ -181,9 +181,9 @@ python3 DataObs/scripts/experiment_pipeline.py \
   --grpo-env TOTAL_EPOCHS=1
 ```
 
-当前 `DataObs/lib/data_process/cot_distill_teacher_filter.py` 已支持普通 parquet 评测链路里的主数据集：`arc-challenge`、`aqua_rat`、`commonsenseqa`、`gsm8k`、`math`、`math-500`、`numinamath`、`strategyqa`、`mbpp`、`mbppplus`、`humaneval`、`humanevalplus`、`livecodebench`。`bfcl` 是单独评测链路，暂不走这个 CoT distill filter。
+当前 `DataObs/lib/data_process/cot_distill_teacher_filter.py` 已支持普通 parquet 评测链路里的主数据集：`arc-challenge`、`aqua_rat`、`commonsenseqa`、`gsm8k`、`math`、`math-500`、`numinamath`、`strategyqa`、`mbpp`、`mbppplus`、`humaneval`、`humanevalplus`、。`bfcl` 是单独评测链路，暂不走这个 CoT distill filter。
 
-如果不传 `--distill-input`，pipeline 会按 `--dataset` 使用默认 seed parquet，例如 `gsm8k -> /data/open_datasets/GSM8K/train.parquet`。建议正式实验前先加 `--smoke-num-rows 32` 跑小样本。
+如果不传 `--distill-input`，pipeline 会按 `--dataset` 使用默认 seed parquet，例如 `gsm8k -> /data/open_datasets/GSM8K/main/train-00000-of-00001.parquet`。建议正式实验前先加 `--smoke-num-rows 32` 跑小样本。
 
 对于已有蒸馏数据：
 
@@ -356,7 +356,7 @@ DRY_RUN="" bash DataObs/experiment_instruction/exp3100_sft_rl_prompt_overlap/com
 
 ```bash
 DATASET=gsm8k
-SEED_INPUT=/data/open_datasets/GSM8K/train.parquet
+SEED_INPUT=/data/open_datasets/GSM8K/main/train-00000-of-00001.parquet
 SFT_RATIO=0.5
 SPLIT_SEED=42
 STAGES=distill,metrics,sft,sft_eval,grpo,grpo_eval
@@ -492,7 +492,7 @@ python3 DataObs/scripts/experiment_pipeline.py \
   --stages distill,metrics,sft,sft_eval \
   --gpu-ids 0 \
   --distill-dataset commonsenseqa \
-  --distill-input /data/open_datasets/CommonsenseQA/data/validation-processed.parquet \
+  --distill-input /data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet \
   --teacher-temperature 0.7 \
   --teacher-num-samples 4 \
   --teacher-do-sample \
@@ -575,7 +575,7 @@ python3 DataObs/scripts/experiment_pipeline.py \
 
 ## 11. 当前 Seed Data 怎么做
 
-现在的 seed data 主要就是 `/data/open_datasets/...` 下的 processed parquet。它们不是 SFT 的 `question/answer` 格式，而是 eval/RL 格式：
+现在的 seed data 主要就是 `/data/open_datasets/...` 下的 raw parquet。它们不是 SFT 的 `question/answer` 格式，而是 eval/RL 格式：
 
 - `prompt`: chat message list，teacher/generation/RL 都从这里读题。
 - `reward_model.ground_truth`: 规则 reward 用的标准答案或测试用例。
@@ -585,9 +585,9 @@ python3 DataObs/scripts/experiment_pipeline.py \
 
 因此：
 
-- prompt-only seed：直接用这些 processed parquet 跑 `distill`。
+- prompt-only seed：直接用这些 raw parquet 跑 `distill`。
 - human reasoning seed：需要已经有 `question`/`answer` 的 SFT parquet，可直接从 `metrics,sft,sft_eval,...` 开始。
-- RL seed：默认还是用原始 processed parquet；当前 pipeline 不会自动把 distilled SFT 数据反转成 RL 数据。
+- RL seed：默认还是用原始 raw parquet；当前 pipeline 不会自动把 distilled SFT 数据反转成 RL 数据。
 
 ## 12. Pipeline 会保留哪些文件
 
@@ -900,7 +900,7 @@ logs/grpo.log
 ### 13.3 当前流程风险
 
 - 代码类数据集虽然已经能 distill/eval，且 `mbpp`、`mbppplus`、`humaneval`、`humanevalplus` 已接入 GRPO reward router，但 reward 会执行代码测试，训练速度和 timeout 风险明显高于数学/选择题。
-- `livecodebench` 目前能 distill/eval，但还没有接入 GRPO reward router；如果要做 RL，需要先补 router 并做小规模 smoke。
+- 目前能 distill/eval，但还没有接入 GRPO reward router；如果要做 RL，需要先补 router 并做小规模 smoke。
 - `bfcl` 是单独 function-calling evaluator，不走普通 parquet reward function；暂时不能直接纳入当前 distill/SFT/RL observation pipeline。
 - Math 类 reward 依赖 `math_verify` 等环境包；所有实验命令应固定在 `verl-cot` 环境运行，避免 base python 缺依赖。
 - `MODEL_NAME`、`experiment_id`、输出路径需要强制包含 dataset/teacher/temp/n_samples/filter/seed，否则后续结果容易无法追踪。

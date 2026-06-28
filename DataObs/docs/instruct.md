@@ -159,6 +159,6 @@ DataObs/lib/evaluation/eval_grpo_dataobs.sh
 ## 隐式默认和注意事项
 
 - `distill_input`、`rl_train_data`、`rl_val_data` 为空时，会按 `--dataset` 查内置默认路径。
-- 支持内置默认路径的数据集包括：`gsm8k`、`math-500`、`math`、`aqua_rat`、`arc-challenge`、`strategyQA`、`commonsenseQA`、`mbpp`、`mbppplus`、`humaneval`、`humanevalplus`、`livecodebench`、`numinamath`。
+- 支持内置默认路径的数据集包括：`gsm8k`、`math-500`、`math`、`aqua_rat`、`arc-challenge`、`strategyQA`、`commonsenseQA`、`mbpp`、`mbppplus`、`humaneval`、`humanevalplus`、、`numinamath`。
 - `--sft-data` 为空时默认吃 distill 输出。如果只跑 `sft` 而不跑 `distill`，要么提前有默认 distill 输出，要么显式传 `--sft-data`。
 - `--metrics-arg`、`--sft-arg`、`--eval-arg`、`--grpo-arg` 都是 `action=append`，可以重复写多次。

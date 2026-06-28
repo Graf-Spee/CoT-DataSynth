@@ -95,7 +95,7 @@ class TrainingPipeline:
         self,
         config: Dict[str, Any],
         script_path: str,
-        val_data_path: Optional[str] = '/data/open_datasets/GSM8K/test.parquet',
+        val_data_path: Optional[str] = '/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet',
         num_epochs: int = 15,
         timeout: Optional[int] = None
     ) -> bool:

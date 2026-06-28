@@ -5,7 +5,7 @@ Supported datasets:
 - Multiple choice: arc-challenge/ai2_arc, aqua_rat, commonsenseqa
 - Math: gsm8k, math, math-500, numinamath
 - Boolean QA: strategyqa
-- Code generation: mbpp, mbppplus, humaneval, humanevalplus, livecodebench
+- Code generation: mbpp, mbppplus, humaneval, humanevalplus
 
 Input parquet requirements:
 - `prompt`: question/prompt payload (string or chat-message list)
@@ -43,7 +43,6 @@ SUPPORTED_DATASETS = (
     "gsm8k",
     "humaneval",
     "humanevalplus",
-    "livecodebench",
     "math",
     "math-500",
     "mbpp",
@@ -65,7 +64,6 @@ DATASET_GROUP = {
     "mbppplus": "code_tests",
     "humaneval": "code_tests",
     "humanevalplus": "code_tests",
-    "livecodebench": "livecodebench",
 }
 
 REASONING_SUFFIX = {
@@ -86,10 +84,6 @@ REASONING_SUFFIX = {
         "Additional distillation instruction: reason briefly, then output the final Python solution "
         "as the last markdown code block in this format: ```python\n...\n```."
     ),
-    "livecodebench": (
-        "Additional distillation instruction: reason briefly, then output complete executable Python code "
-        "as the last markdown code block in this format: ```python\n...\n```."
-    ),
 }
 
 
@@ -108,8 +102,6 @@ def _normalize_dataset_name(name: str) -> str:
         return "humaneval"
     if key in {"humanevalplus", "humaneval+"}:
         return "humanevalplus"
-    if key in {"livecodebench", "lcb"}:
-        return "livecodebench"
     if key == "math":
         return "math"
     if key in {"math500"}:
@@ -146,10 +138,6 @@ def _load_reward_functions(dataset_name: str) -> Callable[..., float]:
     if group == "code_tests":
         from verl.utils.reward_score import mbpp as reward_mod
         return reward_mod.compute_score
-    if group == "livecodebench":
-        from verl.utils.reward_score import livecodebench as reward_mod
-        return reward_mod.compute_score
-
     raise ValueError(f"Unsupported dataset: {dataset_name}")
 
 

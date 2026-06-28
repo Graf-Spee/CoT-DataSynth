@@ -58,8 +58,7 @@
 - `aqua_rat`
 - `commonsenseQA`
 - `gsm8k`
-- `livecodebench`
-- `humaneval`
+- - `humaneval`
 - `humanevalplus`
 - `math`
 - `math-500`
@@ -116,7 +115,7 @@ DataObs 版本默认使用：
 - `ai2_arc`
 - `strategyQA`
 
-注意：router 当前不支持 `commonsenseQA`、`mbpp`、`livecodebench`、`humaneval` 等作为 RL 训练 reward source，除非数据里的 `data_source` 已经映射到现有 key 或补 router。
+注意：router 当前不支持 `commonsenseQA`、`mbpp`、、`humaneval` 等作为 RL 训练 reward source，除非数据里的 `data_source` 已经映射到现有 key 或补 router。
 
 ### 2.4 教师蒸馏
 
@@ -137,9 +136,7 @@ DataObs 版本默认使用：
 - `strategyqa`
 - `mbpp` / `mbppplus`
 - `humaneval` / `humanevalplus`
-- `livecodebench`
-
-不支持 `bfcl`，因为 BFCL 不是普通 parquet + reward function 评测链路。
+- 不支持 `bfcl`，因为 BFCL 不是普通 parquet + reward function 评测链路。
 
 注意：代码类数据集的 teacher filter 会执行生成代码对应的测试，速度更慢，也更依赖执行环境；大规模蒸馏前必须先 `--smoke-num-rows 8/32`。
 
@@ -479,7 +476,7 @@ TODO：
 cd /home/hrh/CoT-DataSynth
 python DataObs/lib/data_process/cot_distill_teacher_filter.py \
   --dataset commonsenseqa \
-  --input-file /data/open_datasets/CommonsenseQA/data/validation-processed.parquet \
+  --input-file /data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet \
   --output-file /tmp/csqa_distill_smoke.parquet \
   --model-id /path/to/teacher \
   --gpu-ids 0 \

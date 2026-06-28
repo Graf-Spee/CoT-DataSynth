@@ -42,7 +42,7 @@ def merge_lora_weights(
     tokenizer_path: str,
     output_path: str,
     *,
-    cuda_home_override: Optional[str] = "/usr/local/cuda-12.6",
+    cuda_home_override: Optional[str] = None,
     dtype: torch.dtype = torch.float32,
     device_map: str = "cuda:0",
     trust_remote_code: bool = True,

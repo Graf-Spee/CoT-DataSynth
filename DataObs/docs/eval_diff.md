@@ -3,7 +3,7 @@
 本文比较 `scripts/eval.sh` 当前使用的评测 prompt 和本地
 `dev/opencompass-main/opencompass/configs/datasets` 里最接近的 OpenCompass 配置。
 
-当前仓库的评测流程是：`scripts/eval.sh` 选择 processed parquet，`verl.trainer.main_generation` 直接读取其中的 `prompt` 列。多数 `prompt` 已经是 chat message list，会再经过 tokenizer chat template。OpenCompass 通常从原始字段用 `PromptTemplate` 或 `RawPromptTemplate` 现场拼 prompt。
+当前仓库的评测流程是：`scripts/eval.sh` 选择 raw parquet，`verl.trainer.main_generation` 直接读取其中的 `prompt` 列。多数 `prompt` 已经是 chat message list，会再经过 tokenizer chat template。OpenCompass 通常从原始字段用 `PromptTemplate` 或 `RawPromptTemplate` 现场拼 prompt。
 
 ## 总览
 
@@ -13,7 +13,6 @@
 | `aqua_rat` | 0-shot CoT，答案格式 `(A)`-`(E)` | AGIEval `aqua-rat` | OC 直接要求选择，提示是 `The answer is`，不要求 CoT |
 | `commonsenseQA` | 0-shot CoT，答案格式 `(A)`-`(E)` | `commonsenseqa_gen.py`，`commonsenseqa_7shot_cot_gen_734a22.py` | OC 默认是检索 few-shot；OC CoT 是 7-shot |
 | `gsm8k` | 0-shot CoT，答案在 `####` 后 | `gsm8k_gen.py`，0-shot boxed 变体 | OC 默认是 4-shot CoT；OC 0-shot 用 `\boxed{}` |
-| `livecodebench` | 只评 code generation，完整题面，要求 markdown code block | `livecodebench_gen.py` | OC 覆盖 3 类任务，用 `### Question` 和 `format_prompt` |
 | `humaneval` | 0-shot，要求 markdown Python block 和 step-by-step | `humaneval_gen.py` | OC 要求只输出代码，不要 markdown，不要 CoT |
 | `humanevalplus` | 同 HumanEval | `humaneval_plus_gen.py` | OC prompt 更短，只要求补全代码 |
 | `math` | 0-shot CoT，有 system role 和 `Problem:` 前缀，答案 boxed | `math_gen.py` | 目标接近，但 wrapper/system/prefix 不同 |
@@ -30,7 +29,7 @@
 
 当前仓库：
 
-- 数据：`/data/open_datasets/ai2_arc/ARC-Challenge/test-processed.parquet`
+- 数据：`/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet`
 - 0-shot chat message。
 - 有 `system: You are a helpful assistant.`
 - 要求 step by step。
@@ -64,7 +63,7 @@ Answer:
 
 当前仓库：
 
-- 数据：`/data/open_datasets/aqua_rat/processed/test-processed.parquet`
+- 数据：`/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet`
 - 0-shot chat message，有 system role。
 - 要求 step by step。
 - 最终答案是 `(A)` 到 `(E)`。
@@ -92,7 +91,7 @@ The answer is
 
 当前仓库：
 
-- 数据：`/data/open_datasets/CommonsenseQA/data/validation-processed.parquet`
+- 数据：`/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet`
 - 0-shot chat message，有 system role。
 - 要求 step-by-step。
 - 最终答案是 `(A)` 到 `(E)`。
@@ -127,7 +126,7 @@ Answer:
 
 当前仓库：
 
-- 数据：`/data/open_datasets/GSM8K/test.parquet`
+- 数据：`/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet`
 - user-only chat message。
 - 结尾：
 
@@ -160,48 +159,11 @@ Please reason step by step, and put your final answer within \boxed{}.
 - OC 默认是 4-shot，示例答案结尾是 `The answer is X`。
 - OC 0-shot 变体使用 `\boxed{}`，不是 `####`。
 
-### livecodebench
-
-当前仓库：
-
-- 数据：`/data/open_datasets/livecodebench_code_gen_lite/processed/test_v1.parquet`
-- 只评 code generation。
-- prompt 包含完整题目标题、描述、输入输出、样例。
-- 结尾：
-
-```text
-Please write complete, executable Python code to solve this problem.
-Think step by step, and wrap your final answer in '```python ```'.
-```
-
-OpenCompass：
-
-- 默认入口：`livecodebench_gen.py`
-- 实际导入：`livecodebench_gen_a4f90b.py`
-- 包含三类任务：
-  - `lcb_code_generation`
-  - `lcb_code_execution`
-  - `lcb_test_output`
-- code generation prompt：
-
-```text
-### Question:
-{question_content}
-
-{format_prompt}### Answer: (use the provided format with backticks)
-```
-
-差异：
-
-- 当前仓库只评 code generation，并使用 DataObs 自己的自然语言 wrapper。
-- OC 同时包含三类 LCB 任务。
-- OC 使用 `format_prompt`，当前仓库使用固定 markdown Python code 指令。
-
 ### humaneval
 
 当前仓库：
 
-- 数据：`/data/open_datasets/humaneval/openai_humaneval/processed/test.parquet`
+- 数据：`/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet`
 - 0-shot。
 - 用 markdown code block 展示函数签名和 docstring。
 - 要求：
@@ -233,7 +195,7 @@ Your response should only contain the code for this function.
 
 当前仓库：
 
-- 数据：`/data/open_datasets/humanevalplus/processed/test.parquet`
+- 数据：`/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet`
 - 和 HumanEval 一样的 wrapper。
 - 要求 step-by-step 和 markdown Python code block。
 
@@ -258,7 +220,7 @@ Complete the following python code:
 
 当前仓库：
 
-- 数据：`/data/open_datasets/MATH/train_processed.parquet`
+- 数据：`/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet`
 - chat message，有 system role。
 - user prompt：
 
@@ -289,7 +251,7 @@ Please reason step by step, and put your final answer within \boxed{}.
 
 当前仓库：
 
-- 数据：`/data/open_datasets/MATH-500/test-processed.parquet`
+- 数据：`/data/open_datasets/MATH-500/test.parquet`
 - chat message，有 system role。
 - 要求 step-by-step 和 boxed answer。
 - 部分样本还会加：
@@ -318,7 +280,7 @@ Please reason step by step, and put your final answer within \boxed{}.
 
 当前仓库：
 
-- 数据：`/data/open_datasets/mbpp/sanitized/processed/test.parquet`
+- 数据：`/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet`
 - 0-shot。
 - 包含 task text 和 tests。
 - 结尾：
@@ -360,7 +322,7 @@ Your code should pass these tests:
 
 当前仓库：
 
-- 数据：`/data/open_datasets/mbppplus/processed/test.parquet`
+- 数据：`/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet`
 - 和 MBPP 一样：0-shot、tests、markdown Python block、step-by-step。
 
 OpenCompass：
@@ -378,7 +340,7 @@ OpenCompass：
 
 当前仓库：
 
-- 数据：`/data/open_datasets/NuminaMath-CoT/test-processed.parquet`
+- 数据：`/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet`
 - chat message，有 system role。
 - 和 MATH 类似：
 
@@ -402,7 +364,7 @@ OpenCompass：
 
 当前仓库：
 
-- 数据：`/data/open_datasets/StrategyQA/data/test-processed.parquet`
+- 数据：`/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet`
 - 0-shot chat message，有 system role。
 - 包含：
   - term and description
