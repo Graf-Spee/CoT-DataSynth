@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import html
 import json
 import os
@@ -27,6 +28,11 @@ ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 PROGRESS_RE = re.compile(r"Training Progress:\s+(\d+)%\|.*?\|\s+(\d+)/(\d+)")
 SFT_STEP_RE = re.compile(r"step:(\d+)\s+-\s+train/loss:([0-9.]+)")
 GRPO_STEP_RE = re.compile(r"\bstep:(\d+)\s+-")
+FINAL_VALIDATION_RE = re.compile(r"Final validation metrics:\s*(\{.*?\})")
+VAL_REWARD_RE = re.compile(
+    r"(?P<key>val-[A-Za-z0-9_./@+-]+/reward/[A-Za-z0-9_./@+-]+):"
+    r"(?P<value>[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)"
+)
 
 
 @dataclass
@@ -104,6 +110,37 @@ def latest_global_step(path: Path) -> int | None:
             if suffix.isdigit():
                 steps.append(int(suffix))
     return max(steps) if steps else None
+
+
+def extract_final_validation_metrics(log_text: str) -> dict[str, float]:
+    matches = FINAL_VALIDATION_RE.findall(log_text)
+    if not matches:
+        return {}
+    try:
+        parsed = ast.literal_eval(matches[-1])
+    except (SyntaxError, ValueError):
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    out: dict[str, float] = {}
+    for key, value in parsed.items():
+        if not isinstance(key, str):
+            continue
+        try:
+            out[key] = float(value)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def extract_latest_validation_rewards(log_text: str) -> dict[str, float]:
+    out: dict[str, float] = {}
+    for match in VAL_REWARD_RE.finditer(log_text):
+        try:
+            out[match.group("key")] = float(match.group("value"))
+        except (TypeError, ValueError):
+            continue
+    return out
 
 
 def stage_artifacts(exp_dir: Path) -> dict[str, list[Path]]:
@@ -207,13 +244,64 @@ def extract_progress(exp_dir: Path) -> dict[str, Any]:
     latest_ckpt = latest_global_step(exp_dir / "grpo")
     if latest_ckpt is not None:
         out.setdefault("grpo", {})["latest_checkpoint"] = latest_ckpt
+    final_val = extract_final_validation_metrics(grpo_log) or extract_latest_validation_rewards(grpo_log)
+    if final_val:
+        reward_items = {
+            key: value
+            for key, value in final_val.items()
+            if "/reward/" in key or key.endswith("reward/mean@1")
+        }
+        primary_key, primary_value = next(iter(reward_items.items() or final_val.items()))
+        out.setdefault("grpo", {})["final_validation"] = final_val
+        out.setdefault("grpo", {})["final_validation_metric"] = primary_key
+        out.setdefault("grpo", {})["final_validation_reward"] = primary_value
     return out
 
 
 def eval_metrics(exp_dir: Path, split: str) -> dict[str, Any] | None:
-    path = exp_dir / "eval" / split / "generated" / "responses_labeled.metrics.json"
+    generated_dir = exp_dir / "eval" / split / "generated"
+    path = generated_dir / "responses_labeled.metrics.json"
     data = read_json(path)
     if not isinstance(data, dict):
+        results_path = generated_dir / "results.json"
+        results = read_json(results_path)
+        if isinstance(results, dict) and "accuracy" in results:
+            accuracy = results.get("accuracy")
+            total = results.get("num_samples") or results.get("total")
+            correct = results.get("num_correct") or results.get("correct")
+            try:
+                accuracy_float = float(accuracy)
+            except (TypeError, ValueError):
+                return None
+            return {
+                "path": str(results_path),
+                "accuracy": accuracy_float * 100 if accuracy_float <= 1 else accuracy_float,
+                "correct": correct,
+                "total": total,
+                "mean@1": accuracy_float if accuracy_float <= 1 else accuracy_float / 100,
+                "pass@1/mean": accuracy_float if accuracy_float <= 1 else accuracy_float / 100,
+            }
+        labeled_path = generated_dir / "responses_labeled.json"
+        labeled = read_json(labeled_path)
+        if isinstance(labeled, list):
+            scores = []
+            for item in labeled:
+                if not isinstance(item, dict) or "score" not in item:
+                    continue
+                try:
+                    scores.append(float(item["score"]))
+                except (TypeError, ValueError):
+                    continue
+            if scores:
+                mean_score = sum(scores) / len(scores)
+                return {
+                    "path": str(labeled_path),
+                    "accuracy": mean_score * 100,
+                    "correct": int(sum(scores)),
+                    "total": len(scores),
+                    "mean@1": mean_score,
+                    "pass@1/mean": mean_score,
+                }
         return None
     first = next(iter(data.values()), None)
     if isinstance(first, dict):
@@ -609,13 +697,14 @@ INDEX_HTML = r"""<!doctype html>
       `;
       const sft = d.eval.sft || {};
       const grpo = d.eval.grpo || {};
+      const p = d.progress || {};
       renderKpis(document.getElementById('evalKpis'), [
         {label: 'SFT accuracy', value: fmt(sft.accuracy, 2)},
         {label: 'SFT pass@1', value: fmt(sft['pass@1/mean'])},
         {label: 'GRPO accuracy', value: fmt(grpo.accuracy, 2)},
         {label: 'GRPO pass@1', value: fmt(grpo['pass@1/mean'])},
+        {label: 'GRPO final val', value: fmt(p.grpo && p.grpo.final_validation_reward)},
       ]);
-      const p = d.progress || {};
       renderKpis(document.getElementById('progressKpis'), [
         {label: 'Distill kept', value: fmt(p.distill && p.distill.kept)},
         {label: 'SFT step', value: `${fmt(p.sft && p.sft.last_step)}/${fmt(p.sft && p.sft.total_steps)}`},

@@ -352,6 +352,21 @@ def run_vllm_eval(
     with open(results_json_path, "w", encoding="utf-8") as f:
         json.dump(results_json, f, indent=2, ensure_ascii=False)
 
+    metrics_json = {
+        dataset: {
+            "test_score": accuracy,
+            "accuracy": accuracy * 100,
+            "correct": int(sum(all_scores)),
+            "total": len(all_scores),
+            "mean@1": accuracy,
+            "pass@1/mean": accuracy,
+            "pass@1/std": 0.0,
+        }
+    }
+    metrics_json_path = generated_dir / "responses_labeled.metrics.json"
+    with open(metrics_json_path, "w", encoding="utf-8") as f:
+        json.dump(metrics_json, f, indent=2, ensure_ascii=False)
+
     # Also write the verl-compatible labeled json
     labeled = []
     for i, output in enumerate(outputs):
