@@ -116,6 +116,12 @@ def last_capital_postprocess(text: str) -> str:
             return t
     return ""
 
+# This is a improved version of last_capital_postprocess, which ensures that the extracted letter is a standalone option (not part of a word).
+# Improvised after examining eval results: 7.4
+def last_capital_postprocess_standalone(text: str) -> str:
+    matches = re.findall(r'(?<![A-Za-z])([A-E])(?![A-Za-z])', text)
+    return matches[-1] if matches else ""
+
 # def extract_flexible(text: str, valid_options: str = 'ABCDE'):
 #     if not text:
 #         return ""
@@ -155,7 +161,7 @@ def compute_score(solution_str, ground_truth, method="strict", format_score=0.0,
     gt_letter = str(ground_truth).strip().upper()
     
     # 提取预测的选项
-    pred_letter = last_capital_postprocess(solution_str)
+    pred_letter = last_capital_postprocess_standalone(solution_str)
     if pred_letter == gt_letter:
         return score
     
@@ -168,4 +174,4 @@ def compute_score(solution_str, ground_truth, method="strict", format_score=0.0,
     return 0.0
 
 def extract_pred(solution_str: str) -> str:
-    return extract_option_letter(solution_str)
+    return last_capital_postprocess_standalone(solution_str)

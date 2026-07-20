@@ -314,10 +314,13 @@ def run_dataobs_evaluation(
     prompt_template_method: str = "zeroshot",
     max_samples: Optional[int] = None,
     generation_batch_size: int = 32,
-    generation_temperature: float = 0.6,
+    generation_temperature: float = 0.0,
+    generation_top_p: float = 1.0,
+    generation_top_k: int = -1,
+    generation_do_sample: bool = False,
     generation_seed: int = 42,
     generation_prompt_length: int = 512,
-    generation_response_length: int = 1024,
+    generation_response_length: int = 2048,
     generation_gpu_memory_utilization: float = 0.8,
     ray_num_cpus: int = 48,
     shutdown_ray: bool = True,
@@ -376,6 +379,9 @@ def run_dataobs_evaluation(
         generation_cfg.data.n_samples = 1
         generation_cfg.data.batch_size = generation_batch_size
         generation_cfg.rollout.temperature = generation_temperature
+        generation_cfg.rollout.top_p = generation_top_p
+        generation_cfg.rollout.top_k = generation_top_k
+        generation_cfg.rollout.do_sample = generation_do_sample
         generation_cfg.rollout.seed = generation_seed
         generation_cfg.rollout.prompt_length = generation_prompt_length
         generation_cfg.rollout.response_length = generation_response_length
@@ -484,11 +490,28 @@ if __name__ == "__main__":
         "--generation-temperature",
         type=float,
         default=0.0,
-        help="Generation temperature. Smoke test defaults to deterministic decoding.",
+        help="Generation temperature. Defaults to GRPO validation deterministic decoding.",
+    )
+    parser.add_argument(
+        "--generation-top-p",
+        type=float,
+        default=1.0,
+        help="Generation top-p. Defaults to GRPO validation.",
+    )
+    parser.add_argument(
+        "--generation-top-k",
+        type=int,
+        default=-1,
+        help="Generation top-k. Defaults to GRPO validation vLLM setting.",
+    )
+    parser.add_argument(
+        "--generation-do-sample",
+        action="store_true",
+        help="Enable sampling during generation. Default matches GRPO validation: disabled.",
     )
     parser.add_argument("--generation-seed", type=int, default=42, help="Generation seed.")
     parser.add_argument("--generation-prompt-length", type=int, default=512, help="Prompt token budget.")
-    parser.add_argument("--generation-response-length", type=int, default=1024, help="Response token budget.")
+    parser.add_argument("--generation-response-length", type=int, default=2048, help="Response token budget.")
     parser.add_argument(
         "--generation-gpu-memory-utilization",
         type=float,
@@ -523,6 +546,9 @@ if __name__ == "__main__":
         max_samples=max_samples,
         generation_batch_size=args.generation_batch_size,
         generation_temperature=args.generation_temperature,
+        generation_top_p=args.generation_top_p,
+        generation_top_k=args.generation_top_k,
+        generation_do_sample=args.generation_do_sample,
         generation_seed=args.generation_seed,
         generation_prompt_length=args.generation_prompt_length,
         generation_response_length=args.generation_response_length,

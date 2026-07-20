@@ -22,6 +22,7 @@ Usage examples:
 from __future__ import annotations
 
 import argparse
+import gc
 import importlib.util
 import json
 import os
@@ -213,6 +214,31 @@ def load_reward_functions(dataset: str):
     return compute_score, extract_pred
 
 
+def cleanup_vllm_engine(llm: Any) -> None:
+    """Best-effort cleanup for repeated in-process vLLM evaluations."""
+    engine = getattr(llm, "llm_engine", None)
+    engine_core = getattr(engine, "engine_core", None)
+    try:
+        if engine_core is not None and hasattr(engine_core, "shutdown"):
+            engine_core.shutdown()
+        elif engine is not None and hasattr(engine, "shutdown"):
+            engine.shutdown()
+        elif engine is not None and hasattr(engine, "model_executor"):
+            engine.model_executor.shutdown()
+    except Exception as exc:
+        print(f"[WARN] vLLM engine cleanup failed: {exc}", flush=True)
+
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+    except Exception as exc:
+        print(f"[WARN] CUDA cache cleanup failed: {exc}", flush=True)
+
+
 def run_vllm_eval(
     model_path: str,
     base_model: str,
@@ -222,15 +248,17 @@ def run_vllm_eval(
     *,
     eval_data: Optional[str] = None,
     num_samples: int = 1,
-    temperature: float = 0.6,
-    top_p: float = 0.95,
-    max_response_len: int = 1024,
+    temperature: float = 0.0,
+    top_p: float = 1.0,
+    top_k: int = -1,
+    max_response_len: int = 2048,
     batch_size: int = 32,
     gpu_memory_utilization: float = 0.8,
     tensor_parallel_size: int = 1,
     prompt_template_method: str = "zeroshot",
     max_samples: Optional[int] = None,
     seed: int = 42,
+    enable_thinking: bool = False,
 ) -> Dict[str, Any]:
     os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
     os.environ["CUDA_VISIBLE_DEVICES"] = gpu_ids
@@ -275,7 +303,12 @@ def run_vllm_eval(
             # numpy array of message dicts -> list of dicts
             messages = p.tolist() if hasattr(p, "tolist") else list(p)
             prompts.append(
-                tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+                tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                    enable_thinking=enable_thinking,
+                )
             )
     print(f"[INFO] Loaded {len(prompts)} prompts from {prepared_data}")
 
@@ -297,6 +330,7 @@ def run_vllm_eval(
         n=num_samples,
         temperature=temperature,
         top_p=top_p,
+        top_k=top_k,
         max_tokens=max_response_len,
         seed=seed,
     )
@@ -344,8 +378,10 @@ def run_vllm_eval(
             "num_samples_per_prompt": num_samples,
             "temperature": temperature,
             "top_p": top_p,
+            "top_k": top_k,
             "max_response_len": max_response_len,
             "batch_size": batch_size,
+            "enable_thinking": enable_thinking,
         },
     }
     results_json_path = generated_dir / "results.json"
@@ -392,6 +428,9 @@ def run_vllm_eval(
     print(f"[INFO] Results saved to {out_dir}")
     print(f"[INFO] Accuracy: {accuracy:.4f}")
 
+    cleanup_vllm_engine(llm)
+    del llm
+
     return results_json
 
 
@@ -404,15 +443,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gpu-ids", default="0", help="GPU IDs, e.g. '5' or '0,1'")
     parser.add_argument("--eval-data", default="", help="Override eval data parquet path")
     parser.add_argument("--num-samples", type=int, default=1, help="Number of samples per prompt")
-    parser.add_argument("--temperature", type=float, default=0.6, help="Generation temperature")
-    parser.add_argument("--top-p", type=float, default=0.95, help="Top-p sampling")
-    parser.add_argument("--max-response-len", type=int, default=1024, help="Max tokens to generate")
+    parser.add_argument("--temperature", type=float, default=0.0, help="Generation temperature")
+    parser.add_argument("--top-p", type=float, default=1.0, help="Top-p sampling")
+    parser.add_argument("--top-k", type=int, default=-1, help="Top-k sampling")
+    parser.add_argument("--max-response-len", type=int, default=2048, help="Max tokens to generate")
     parser.add_argument("--batch-size", type=int, default=32, help="vLLM batch size")
     parser.add_argument("--gpu-memory-utilization", type=float, default=0.8, help="vLLM GPU memory utilization")
     parser.add_argument("--tensor-parallel-size", type=int, default=1, help="vLLM tensor parallel size")
     parser.add_argument("--prompt-template-method", default="zeroshot", choices=["plain", "zeroshot", "fewshot"])
     parser.add_argument("--max-samples", type=int, default=0, help="Limit eval to first N rows (0 = all)")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--enable-thinking", action="store_true", help="Enable Qwen3 thinking mode in chat template")
     return parser.parse_args()
 
 
@@ -434,6 +475,7 @@ if __name__ == "__main__":
         num_samples=args.num_samples,
         temperature=args.temperature,
         top_p=args.top_p,
+        top_k=args.top_k,
         max_response_len=args.max_response_len,
         batch_size=args.batch_size,
         gpu_memory_utilization=args.gpu_memory_utilization,
@@ -441,5 +483,6 @@ if __name__ == "__main__":
         prompt_template_method=args.prompt_template_method,
         max_samples=args.max_samples if args.max_samples > 0 else None,
         seed=args.seed,
+        enable_thinking=args.enable_thinking,
     )
     print(f"\nFinal accuracy: {result['accuracy']:.4f}")

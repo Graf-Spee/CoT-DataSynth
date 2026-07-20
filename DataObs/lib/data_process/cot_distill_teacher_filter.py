@@ -78,7 +78,8 @@ REASONING_SUFFIX = {
         r"Additional distillation instruction: provide step-by-step reasoning and put the final answer in \boxed{}."
     ),
     "truefalse": (
-        'Additional distillation instruction: provide concise reasoning, then end with exactly "true" or "false".'
+        'Additional distillation instruction: provide concise reasoning, '
+        'then end with exactly "So the answer is yes" or "So the answer is no".'
     ),
     "code_tests": (
         "Additional distillation instruction: reason briefly, then output the final Python solution "

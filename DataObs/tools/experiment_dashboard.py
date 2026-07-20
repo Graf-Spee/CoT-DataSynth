@@ -258,8 +258,8 @@ def extract_progress(exp_dir: Path) -> dict[str, Any]:
     return out
 
 
-def eval_metrics(exp_dir: Path, split: str) -> dict[str, Any] | None:
-    generated_dir = exp_dir / "eval" / split / "generated"
+def eval_metrics(exp_dir: Path, split: str, eval_dir_name: str = "eval") -> dict[str, Any] | None:
+    generated_dir = exp_dir / eval_dir_name / split / "generated"
     path = generated_dir / "responses_labeled.metrics.json"
     data = read_json(path)
     if not isinstance(data, dict):
@@ -348,6 +348,10 @@ def dashboard_data(root: Path, experiment_id: str, refresh_grpo: bool = False) -
         "eval": {
             "sft": eval_metrics(exp_dir, "sft"),
             "grpo": eval_metrics(exp_dir, "grpo"),
+        },
+        "eval_old": {
+            "sft": eval_metrics(exp_dir, "sft", "eval_old"),
+            "grpo": eval_metrics(exp_dir, "grpo", "eval_old"),
         },
         "grpo_summary": grpo_summary,
         "artifacts": {
@@ -492,7 +496,7 @@ INDEX_HTML = r"""<!doctype html>
       gap: 12px;
     }
     .top-grid {
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: minmax(240px, 0.8fr) minmax(520px, 1.8fr) minmax(280px, 0.9fr);
     }
     .card {
       background: var(--panel);
@@ -500,6 +504,7 @@ INDEX_HTML = r"""<!doctype html>
       border-radius: 8px;
       padding: 14px;
       min-width: 0;
+      overflow-x: auto;
     }
     .kpis {
       display: grid;
@@ -568,6 +573,9 @@ INDEX_HTML = r"""<!doctype html>
     }
     .muted { color: var(--muted); }
     .mt { margin-top: 12px; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .delta-pos { color: var(--good); font-weight: 700; }
+    .delta-neg { color: var(--bad); font-weight: 700; }
     @media (max-width: 1100px) {
       .controls, .top-grid, .plots { grid-template-columns: 1fr; }
       .kpis { grid-template-columns: 1fr 1fr; }
@@ -601,7 +609,7 @@ INDEX_HTML = r"""<!doctype html>
       </div>
       <div class="card">
         <h2>Evaluation</h2>
-        <div class="kpis" id="evalKpis"></div>
+        <div id="evalKpis"></div>
       </div>
       <div class="card">
         <h2>Progress</h2>
@@ -684,6 +692,80 @@ INDEX_HTML = r"""<!doctype html>
         </div>
       `).join('');
     }
+    function metricValue(metrics, key) {
+      if (!metrics) return null;
+      const value = metrics[key];
+      return value === undefined ? null : value;
+    }
+    function metricPct(metrics) {
+      const accuracy = metricValue(metrics, 'accuracy');
+      if (accuracy !== null) return accuracy;
+      const pass = metricValue(metrics, 'pass@1/mean');
+      return pass === null ? null : pass * 100;
+    }
+    function metricPass(metrics) {
+      return metricValue(metrics, 'pass@1/mean');
+    }
+    function deltaFmt(current, old) {
+      if (current === null || old === null) return '-';
+      const delta = current - old;
+      const cls = delta > 0 ? 'delta-pos' : (delta < 0 ? 'delta-neg' : '');
+      const sign = delta > 0 ? '+' : '';
+      return `<span class="${cls}">${sign}${delta.toFixed(2)}</span>`;
+    }
+    function metricSource(metrics) {
+      if (!metrics || !metrics.path) return '-';
+      return artifactLink(metrics.path, relPath(metrics.path));
+    }
+    function renderEvalTable(currentEval, oldEval, progress) {
+      const rows = [
+        {stage: 'SFT', old: oldEval.sft || null, current: currentEval.sft || null},
+        {stage: 'GRPO', old: oldEval.grpo || null, current: currentEval.grpo || null},
+      ];
+      const finalVal = progress.grpo && progress.grpo.final_validation_reward;
+      const finalValMetric = progress.grpo && progress.grpo.final_validation_metric;
+      const finalValSource = currentData.logs && currentData.logs.grpo && currentData.logs.grpo.exists
+        ? artifactLink(currentData.logs.grpo.path, 'logs/grpo.log')
+        : '-';
+      document.getElementById('evalKpis').innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Stage</th>
+              <th class="num">Old acc</th>
+              <th class="num">Current acc</th>
+              <th class="num">Delta pp</th>
+              <th class="num">Old pass@1</th>
+              <th class="num">Current pass@1</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>${rows.map(row => {
+            const oldAcc = metricPct(row.old);
+            const currentAcc = metricPct(row.current);
+            return `
+              <tr>
+                <td>${row.stage}</td>
+                <td class="num">${fmt(oldAcc, 2)}</td>
+                <td class="num">${fmt(currentAcc, 2)}</td>
+                <td class="num">${deltaFmt(currentAcc, oldAcc)}</td>
+                <td class="num">${fmt(metricPass(row.old))}</td>
+                <td class="num">${fmt(metricPass(row.current))}</td>
+                <td class="paths">${metricSource(row.current)}</td>
+              </tr>`;
+          }).join('')}
+            <tr>
+              <td>GRPO final val</td>
+              <td class="num">-</td>
+              <td class="num">-</td>
+              <td class="num">-</td>
+              <td class="num">-</td>
+              <td class="num">${fmt(finalVal)}</td>
+              <td class="paths">${finalValMetric ? htmlEscape(finalValMetric) + '<br>' : ''}${finalValSource}</td>
+            </tr>
+          </tbody>
+        </table>`;
+    }
     function render() {
       const d = currentData;
       if (!d || d.error) {
@@ -695,16 +777,10 @@ INDEX_HTML = r"""<!doctype html>
         <div>${d.exp_dir}</div>
         <div class="mt">dataset: ${fmt(d.manifest.dataset)} | base: ${fmt(d.manifest.base_model)}</div>
       `;
-      const sft = d.eval.sft || {};
-      const grpo = d.eval.grpo || {};
+      const evalCurrent = d.eval || {};
+      const evalOld = d.eval_old || {};
       const p = d.progress || {};
-      renderKpis(document.getElementById('evalKpis'), [
-        {label: 'SFT accuracy', value: fmt(sft.accuracy, 2)},
-        {label: 'SFT pass@1', value: fmt(sft['pass@1/mean'])},
-        {label: 'GRPO accuracy', value: fmt(grpo.accuracy, 2)},
-        {label: 'GRPO pass@1', value: fmt(grpo['pass@1/mean'])},
-        {label: 'GRPO final val', value: fmt(p.grpo && p.grpo.final_validation_reward)},
-      ]);
+      renderEvalTable(evalCurrent, evalOld, p);
       renderKpis(document.getElementById('progressKpis'), [
         {label: 'Distill kept', value: fmt(p.distill && p.distill.kept)},
         {label: 'SFT step', value: `${fmt(p.sft && p.sft.last_step)}/${fmt(p.sft && p.sft.total_steps)}`},

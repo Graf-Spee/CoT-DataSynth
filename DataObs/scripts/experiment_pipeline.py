@@ -384,6 +384,7 @@ class Pipeline:
         if bad:
             raise SystemExit(f"[ERROR] Distill source_index out of range for {seed_path}: {bad[:5]}")
 
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         seed_df.iloc[source_indices].copy().to_parquet(output_path, index=False)
         self.results["rl_train_from_distill_kept"] = str(output_path)
         return output_path
@@ -663,4 +664,9 @@ def parse_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
+    print(
+        "[DEPRECATED] DataObs/scripts/experiment_pipeline.py uses legacy shell eval paths. "
+        "Use DataObs/scripts/experiment_pipeline_vllm.py for current experiments.",
+        file=sys.stderr,
+    )
     Pipeline(parse_args()).run()

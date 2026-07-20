@@ -78,6 +78,7 @@ def extract_boolean_answer(text: str) -> str:
     match = re.findall(r"(true|false)", text, re.IGNORECASE)
     return match[-1].lower() if match else "N/A"
 
+# Adopted from opencompass - opencompass/opencompass/datasets/strategyqa.py: strategyqa_pred_postprocess
 def strategyqa_pred_postprocess(text: str) -> str:
     text = text.split('\n\n')[0]
     text = text.split('answer is ')[-1]
@@ -86,6 +87,17 @@ def strategyqa_pred_postprocess(text: str) -> str:
         return match.group(1)
     return ''
 
+# This is a improved version of strategyqa_pred_postprocess, which ensures that the extracted answer is the last standalone option (prefers "answer is ").
+# Improvised after examining eval results: 7.2
+def strategyqa_pred_postprocess_last(text: str) -> str:
+    text = text.lower().strip()
+    split_text = text.split('answer is ')[-1]
+    matches = re.findall(r'\b(yes|no)\b', split_text)
+    if matches:
+        return matches[0] if 'answer is ' in text else matches[-1]
+    return ''
+
+# DataObs StrategyQA prompts and default scoring use yes/no; true_false is an optional mode.
 def compute_score(solution_str, ground_truth, method="yes_no", format_score=0.0, score=1.0):
     """
     Evaluate true/false question.
@@ -108,7 +120,7 @@ def compute_score(solution_str, ground_truth, method="yes_no", format_score=0.0,
     if not solution_str or ground_truth is None:
         return 0.0
     
-    extractor = strategyqa_pred_postprocess if method == "yes_no" else extract_boolean_answer
+    extractor = strategyqa_pred_postprocess_last if method == "yes_no" else extract_boolean_answer
     
     # Extract prediction
     pred = extractor(solution_str)
@@ -127,4 +139,4 @@ def compute_score(solution_str, ground_truth, method="yes_no", format_score=0.0,
     return 0.0
 
 def extract_pred(solution_str: str) -> str:
-    return strategyqa_pred_postprocess(solution_str)
+    return strategyqa_pred_postprocess_last(solution_str)

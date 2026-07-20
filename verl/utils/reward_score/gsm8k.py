@@ -35,6 +35,8 @@ def extract_solution(solution_str, method="strict"):
         howpublished = {\\url{https://github.com/open-compass/opencompass}},
         year={2023}
     }
+
+    OC-boxed: adds \\boxed to the extraction method, in accordance with current GSM8K prompts. Improvised: 7.2
     """
 
     if method == "strict":
@@ -54,6 +56,36 @@ def extract_solution(solution_str, method="strict"):
             final_answer = None
         else:
             final_answer =  numbers[-1]
+    elif method == 'OC-boxed':
+        idx = solution_str.rfind("\\boxed")
+        if "\\boxed " in solution_str:
+            final_answer = solution_str.split("\\boxed ")[-1].split("$")[0].strip()
+        elif idx > 0:
+            i = idx
+            right_brace_idx = None
+            num_left_braces_open = 0
+            while i < len(solution_str):
+                if solution_str[i] == "{":
+                    num_left_braces_open += 1
+                if solution_str[i] == "}":
+                    num_left_braces_open -= 1
+                    if num_left_braces_open == 0:
+                        right_brace_idx = i
+                        break
+                i += 1
+
+            final_answer = None if right_brace_idx is None else solution_str[solution_str.find("{", idx) + 1 : right_brace_idx].strip()
+        else:
+            final_answer = None
+
+        if final_answer is None:
+            solution_str = solution_str.replace(",", "")
+            solution_str = solution_str.split('Question:')[0]           # 截断后续生成内容
+            numbers = re.findall(r'\-?\d+\.\d+|\-?\d+', solution_str)
+            if not numbers or len(numbers) == 0:
+                final_answer = None
+            else:
+                final_answer =  numbers[-1]
 
     return final_answer
 
@@ -63,7 +95,7 @@ def extract_pred(solution_str: str) -> str:
 
     This function is required by the evaluation pipeline.
     """
-    answer = extract_solution(solution_str, method="opencompass")
+    answer = extract_solution(solution_str, method="OC-boxed")
     return answer if answer is not None else ""
 
 
@@ -79,7 +111,7 @@ def compute_score(solution_str, ground_truth, method="strict", format_score=0.0,
         format_score: the score for the format
         score: the score for the correct answer
     """
-    answer = extract_solution(solution_str=solution_str, method='opencompass')
+    answer = extract_solution(solution_str=solution_str, method='OC-boxed')
     answer_value = _to_float(answer)
     ground_truth_value = _to_float(ground_truth)
     if answer_value is None or ground_truth_value is None:

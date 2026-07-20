@@ -5,6 +5,7 @@ MBPP Code Generation Evaluation
 import signal
 import io
 import contextlib
+import re
 
 
 class TimeoutException(Exception):
@@ -36,6 +37,30 @@ def extract_code_generation(model_output: str):
         # Only keep the last code block
         indexlines = indexlines[-2:]
     return '\n'.join(outputlines[indexlines[0] + 1:indexlines[1]])
+
+def extract_code_generation_lastdefclass(model_output: str):
+    """Extract the last solution-like markdown code block.
+
+    Prefer the last code block that contains a function or class definition.
+    If no such block exists, fall back to the last complete code block.
+
+    Improvised: 7.4
+    """
+    outputlines = model_output.split('\n')
+    indexlines = [i for i, line in enumerate(outputlines) if '```' in line]
+    if len(indexlines) < 2:
+        return ''
+
+    blocks = []
+    for start, end in zip(indexlines[0::2], indexlines[1::2]):
+        block = '\n'.join(outputlines[start + 1:end])
+        blocks.append(block)
+
+    for block in reversed(blocks):
+        if re.search(r'(^|\n)\s*(def|class)\s+\w+', block):
+            return block
+
+    return blocks[-1]
 
 
 def parse_test_cases(ground_truth):
@@ -180,7 +205,7 @@ def compute_score(solution_str, ground_truth, method="strict", format_score=0.0,
         return 0.0
 
     # Step 1: Extract code from model output (OpenCompass extract_utils.py)
-    extracted_code = extract_code_generation(solution_str)
+    extracted_code = extract_code_generation_lastdefclass(solution_str)
 
     if not extracted_code or not extracted_code.strip():
         return 0.0
@@ -237,4 +262,4 @@ def extract_pred(solution_str):
     Returns:
         Extracted code string
     """
-    return extract_code_generation(solution_str)
+    return extract_code_generation_lastdefclass(solution_str)
