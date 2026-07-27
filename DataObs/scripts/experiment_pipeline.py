@@ -21,6 +21,22 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+DISTILL_METHODS = (
+    "teacher_correctness_filter",
+    "question_rephrasing",
+    "answer_augmentation",
+    "question_augmentation",
+    "reverse_thinking",
+)
+
+DISTILL_METHOD_SCRIPTS = {
+    "teacher_correctness_filter": REPO_ROOT / "DataObs" / "lib" / "data_process" / "cot_distill_teacher_filter.py",
+    "question_rephrasing": REPO_ROOT / "DataObs" / "baselines" / "heuristics" / "question_rephrasing.py",
+    "answer_augmentation": REPO_ROOT / "DataObs" / "baselines" / "heuristics" / "answer_augmentation.py",
+    "question_augmentation": REPO_ROOT / "DataObs" / "baselines" / "heuristics" / "question_augmentation.py",
+    "reverse_thinking": REPO_ROOT / "DataObs" / "baselines" / "heuristics" / "reverse_thinking_augmentation.py",
+}
+
 DATASET_DEFAULTS: dict[str, dict[str, str]] = {
     "gsm8k": {
         "distill_input": "/data/open_datasets/GSM8K/main/train-00000-of-00001.parquet",
@@ -84,6 +100,18 @@ DATASET_DEFAULTS: dict[str, dict[str, str]] = {
     },
 }
 
+MATH_STYLE_DATASETS = {"gsm8k", "math", "math-500", "numinamath"}
+ORIGINAL_METAMATH_NATIVE_DATASETS = {"gsm8k"}
+ORIGINAL_METAMATH_BORROWED_DATASETS = {"math", "math-500", "numinamath"}
+BACKWARD_PROMPT_FAMILIES = {
+    "arc-challenge": "mcq",
+    "commonsenseqa": "mcq",
+    "gsm8k": "math",
+    "math": "math",
+    "math-500": "math",
+    "strategyqa": "yesno",
+}
+
 
 def normalize_dataset_key(name: str) -> str:
     raw = name.strip()
@@ -119,12 +147,112 @@ def dataset_default(name: str, field: str) -> str:
     return DATASET_DEFAULTS.get(normalize_dataset_key(name), {}).get(field, "")
 
 
+def _distill_dataset_key(name: str) -> str:
+    return normalize_dataset_key(name).lower().replace("_", "-")
+
+
+def answer_aug_original_prompt_status(dataset: str) -> str:
+    key = _distill_dataset_key(dataset)
+    if key in ORIGINAL_METAMATH_NATIVE_DATASETS:
+        return "native"
+    if key in ORIGINAL_METAMATH_BORROWED_DATASETS:
+        return "borrowed"
+    return "unsupported"
+
+
+def prompt_support_for_method(method: str, dataset: str, *, use_original_metamath_prompt: bool = False) -> dict[str, Any]:
+    key = _distill_dataset_key(dataset)
+    group = "unknown"
+    if key in {"arc-challenge", "aqua-rat", "commonsenseqa"}:
+        group = "multiple_choice"
+    elif key in MATH_STYLE_DATASETS:
+        group = "math"
+    elif key == "strategyqa":
+        group = "yesno"
+    elif key in {"mbpp", "mbppplus", "humaneval", "humanevalplus"}:
+        group = "code"
+
+    if method == "teacher_correctness_filter":
+        source = "DataObs fallback prompt"
+        if key == "strategyqa":
+            source = "DataObs fallback prompt + Yes or no student cue"
+        return {"support": "supported", "teacher_prompt": source, "dataset_group": group}
+
+    if method == "answer_augmentation":
+        if use_original_metamath_prompt:
+            status = answer_aug_original_prompt_status(key)
+            return {
+                "support": "supported" if status != "unsupported" else "unsupported",
+                "teacher_prompt": f"original MetaMath prompt ({status})",
+                "dataset_group": group,
+            }
+        return {"support": "supported", "teacher_prompt": "DataObs dataset-specific prompt", "dataset_group": group}
+
+    if method == "question_rephrasing":
+        return {
+            "support": "supported",
+            "rephrase_prompt": "MetaMath rephrase prompt",
+            "answer_prompt": "DataObs dataset-specific prompt",
+            "dataset_group": group,
+        }
+
+    if method in {"question_augmentation", "reverse_thinking"}:
+        family = BACKWARD_PROMPT_FAMILIES.get(key)
+        if family is None:
+            return {
+                "support": "unsupported",
+                "teacher_prompt": "no backward-question prompt",
+                "dataset_group": group,
+            }
+        source = "original baseline prompt" if family == "mcq" else f"{family} backward-question prompt"
+        return {
+            "support": "supported",
+            "teacher_prompt": source,
+            "backward_prompt_family": family,
+            "dataset_group": group,
+        }
+
+    return {"support": "unknown", "dataset_group": group}
+
+
 def now() -> str:
     return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
 def as_list(values: list[str] | None) -> list[str]:
     return list(values or [])
+
+
+def hydra_int_override(values: list[str] | None, key: str, default: int) -> int:
+    prefix = f"{key}="
+    result = default
+    for item in values or []:
+        if not item.startswith(prefix):
+            continue
+        raw = item.split("=", 1)[1].strip()
+        try:
+            result = int(raw)
+        except ValueError as exc:
+            raise SystemExit(f"[ERROR] {key} must be an integer, got: {raw}") from exc
+    return result
+
+
+def parquet_num_rows(path: str) -> int | None:
+    if not path.endswith(".parquet"):
+        return None
+    try:
+        import pyarrow.parquet as pq
+
+        return pq.ParquetFile(path).metadata.num_rows
+    except Exception:
+        pass
+    try:
+        import pandas as pd
+
+        return len(pd.read_parquet(path))
+    except Exception as exc:  # pragma: no cover - best-effort preflight
+        print(f"[WARN] Could not inspect parquet row count for {path}: {exc}")
+        return None
 
 
 def parse_env_pairs(values: list[str] | None) -> dict[str, str]:
@@ -155,8 +283,7 @@ def append_jsonl(path: Path, data: Any) -> None:
         f.write(json.dumps(data, ensure_ascii=False) + "\n")
 
 
-def prepare_parquet(dataset: str, input_path: str, output_path: Path) -> Path:
-    script = REPO_ROOT / "DataObs" / "lib" / "evaluation" / "prepare_eval_data.py"
+def _run_prepare_script(script: Path, dataset: str, input_path: str, output_path: Path) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [
@@ -173,6 +300,16 @@ def prepare_parquet(dataset: str, input_path: str, output_path: Path) -> Path:
         check=True,
     )
     return output_path
+
+
+def prepare_parquet(dataset: str, input_path: str, output_path: Path) -> Path:
+    script = REPO_ROOT / "DataObs" / "lib" / "evaluation" / "prepare_eval_data.py"
+    return _run_prepare_script(script, dataset, input_path, output_path)
+
+
+def prepare_distill_parquet(dataset: str, input_path: str, output_path: Path) -> Path:
+    script = REPO_ROOT / "DataObs" / "lib" / "data_process" / "prepare_distill_data.py"
+    return _run_prepare_script(script, dataset, input_path, output_path)
 
 
 def latest_global_step(path: Path) -> Path | None:
@@ -236,7 +373,7 @@ class Pipeline:
         self.commands_file = self.exp_dir / "commands.jsonl"
         self.results_file = self.exp_dir / "results.json"
         self.manifest_file = self.exp_dir / "manifest.json"
-        self.results: dict[str, Any] = {}
+        self.results: dict[str, Any] = {"distill_config": self.build_distill_config()}
 
     def command_env(self, extra: dict[str, str] | None = None) -> dict[str, str]:
         env = os.environ.copy()
@@ -298,8 +435,10 @@ class Pipeline:
             "dataset": self.args.dataset,
             "base_model": self.args.base_model,
             "teacher_model": self.args.teacher_model,
+            "distill_method": self.args.distill_method,
             "data_variant": self.args.data_variant,
             "reasoning_source": self.args.reasoning_source,
+            "distill_config": self.build_distill_config(),
             "paths": {
                 "experiment_dir": str(self.exp_dir),
                 "sft_dir": str(self.sft_dir),
@@ -342,17 +481,91 @@ class Pipeline:
     def distill_input_path(self) -> str:
         return self.args.distill_input or dataset_default(self.args.dataset, "distill_input")
 
+    def distill_dataset_name(self) -> str:
+        return self.args.distill_dataset or self.args.dataset
+
+    def distill_dataset_key(self) -> str:
+        return _distill_dataset_key(self.distill_dataset_name())
+
+    def distill_question_source(self) -> str:
+        dataset = self.distill_dataset_key()
+        if dataset == "gsm8k":
+            return "raw_question"
+        if dataset in {"math", "math-500", "numinamath"}:
+            return "raw_problem"
+        if dataset in {"arc-challenge", "commonsenseqa", "aqua-rat"}:
+            return "raw_question_plus_choices"
+        if dataset == "strategyqa":
+            return "raw_question_plus_yesno"
+        if dataset in {"humaneval", "humanevalplus"}:
+            return "raw_prompt"
+        if dataset in {"mbpp", "mbppplus"}:
+            return "raw_text_plus_tests"
+        return "raw_question"
+
+    def answer_aug_original_prompt_supported(self) -> bool:
+        return self.answer_aug_original_prompt_status() != "unsupported"
+
+    def answer_aug_original_prompt_status(self) -> str:
+        return answer_aug_original_prompt_status(self.distill_dataset_key())
+
+    def build_distill_config(self) -> dict[str, Any]:
+        method = self.args.distill_method
+        method_specific: dict[str, Any] = {
+            "teacher_num_samples": self.args.teacher_num_samples,
+            "teacher_do_sample": bool(self.args.teacher_do_sample),
+            "teacher_dtype": self.args.teacher_dtype,
+        }
+        if method == "teacher_correctness_filter":
+            method_specific["num_cots"] = 1
+        elif method == "answer_augmentation":
+            method_specific["num_augmented_answers"] = self.args.teacher_num_samples
+            method_specific["use_original_metamath_prompt"] = bool(self.args.answer_aug_use_original_metamath_prompt)
+            method_specific["original_metamath_prompt_supported"] = self.answer_aug_original_prompt_supported()
+            method_specific["original_metamath_prompt_status"] = self.answer_aug_original_prompt_status()
+        elif method == "question_rephrasing":
+            method_specific["num_rephrases"] = self.args.teacher_num_samples
+            method_specific["num_cots_per_rephrase"] = self.args.rephrase_num_cots
+        elif method == "question_augmentation":
+            method_specific["num_backward_questions"] = self.args.teacher_num_samples
+        elif method == "reverse_thinking":
+            method_specific["num_backward_questions"] = 1
+            method_specific["num_forward_cots"] = 1
+            method_specific["num_backward_cots"] = 1
+            method_specific["num_consistency_checks"] = 1
+        return {
+            "method": method,
+            "dataset": self.distill_dataset_key(),
+            "input_prepare_mode": "distill_raw",
+            "prompt_source": "raw_dataset",
+            "question_source": self.distill_question_source(),
+            "prompt_support": prompt_support_for_method(
+                method,
+                self.distill_dataset_key(),
+                use_original_metamath_prompt=bool(self.args.answer_aug_use_original_metamath_prompt),
+            ),
+            "eval_default": {
+                "enable_thinking": False,
+                "prompt_template_method": getattr(self.args, "eval_prompt_template_method", None),
+            },
+            "method_specific": method_specific,
+        }
+
     def rl_train_data_path(self) -> str:
         return self.args.rl_train_data or dataset_default(self.args.dataset, "rl_train")
 
     def rl_val_data_path(self) -> str:
         return self.args.rl_val_data or dataset_default(self.args.dataset, "rl_val")
 
-    def prepare_dataset_data(self, data_path: str, split_name: str) -> Path:
-        prepared = self.exp_dir / "prepared_data" / f"{split_name}.parquet"
+    def prepare_dataset_data(self, data_path: str, split_name: str, *, mode: str = "eval") -> Path:
+        prepared = self.exp_dir / "prepared_data" / mode / f"{split_name}.parquet"
         if prepared.exists():
             return prepared
-        return prepare_parquet(self.args.dataset, data_path, prepared)
+        if mode == "eval":
+            return prepare_parquet(self.args.dataset, data_path, prepared)
+        if mode == "distill":
+            return prepare_distill_parquet(self.distill_dataset_key(), data_path, prepared)
+        raise ValueError(f"Unknown prepare mode: {mode}")
 
     def rl_train_from_distill_kept_path(self) -> Path:
         return self.exp_dir / "rl_data" / "train_from_distill_kept.parquet"
@@ -377,7 +590,7 @@ class Pipeline:
         if not source_indices:
             raise SystemExit(f"[ERROR] No kept source_index found in distill output: {distill_path}")
 
-        prepared_seed_path = self.prepare_dataset_data(str(seed_path), "distill_seed_for_rl")
+        prepared_seed_path = self.prepare_dataset_data(str(seed_path), "distill_seed_for_rl", mode="distill")
         seed_df = pd.read_parquet(prepared_seed_path)
         max_index = len(seed_df) - 1
         bad = [idx for idx in source_indices if idx < 0 or idx > max_index]
@@ -399,18 +612,42 @@ class Pipeline:
         return self.args.model_name or f"{self.args.experiment_id}-{suffix}"
 
     def stage_distill(self) -> None:
+        distill_method = self.args.distill_method
+        if distill_method == "teacher_correctness_filter" and self.args.teacher_num_samples != 1:
+            raise SystemExit(
+                "[ERROR] --distill-method teacher_correctness_filter requires "
+                "--teacher-num-samples 1. Use --distill-method answer_augmentation "
+                "for multi-sample teacher answer baselines."
+            )
+        if distill_method == "reverse_thinking" and self.args.teacher_num_samples != 1:
+            raise SystemExit(
+                "[ERROR] --distill-method reverse_thinking does not support "
+                "--teacher-num-samples > 1 yet. Use 1 to keep the current single-path setting."
+            )
+        support_info = prompt_support_for_method(
+            distill_method,
+            self.distill_dataset_key(),
+            use_original_metamath_prompt=bool(self.args.answer_aug_use_original_metamath_prompt),
+        )
+        if support_info.get("support") == "unsupported":
+            raise SystemExit(
+                f"[ERROR] distill method {distill_method!r} is not supported for dataset "
+                f"{self.distill_dataset_name()!r}: {support_info.get('teacher_prompt', 'no prompt support')}"
+            )
+
         distill_input_source = self.distill_input_path()
         check_input(self.args.teacher_model, "teacher model", True, self.args.dry_run)
         check_input(distill_input_source, "distill input", True, self.args.dry_run)
         if self.args.dry_run and not Path(distill_input_source).exists():
             distill_input = distill_input_source
         else:
-            distill_input = str(self.prepare_dataset_data(distill_input_source, "distill_input"))
+            distill_input = str(self.prepare_dataset_data(distill_input_source, "distill_input", mode="distill"))
+
         cmd = [
             sys.executable,
-            str(REPO_ROOT / "DataObs" / "lib" / "data_process" / "cot_distill_teacher_filter.py"),
+            str(DISTILL_METHOD_SCRIPTS[distill_method]),
             "--dataset",
-            self.args.distill_dataset or self.args.dataset,
+            self.distill_dataset_key(),
             "--input-file",
             distill_input,
             "--output-file",
@@ -419,8 +656,8 @@ class Pipeline:
             self.args.teacher_model,
             "--gpu-ids",
             self.args.distill_gpu_ids or self.args.gpu_ids,
-            "--num-cots",
-            str(self.args.teacher_num_samples),
+            "--dtype",
+            self.args.teacher_dtype,
             "--temperature",
             str(self.args.teacher_temperature),
             "--top-p",
@@ -436,16 +673,75 @@ class Pipeline:
             "--correct-threshold",
             str(self.args.teacher_correct_threshold),
         ]
-        if self.args.teacher_num_samples > 1 or self.args.teacher_do_sample:
+        if distill_method == "teacher_correctness_filter":
+            cmd += ["--num-cots", "1"]
+        elif distill_method == "answer_augmentation":
+            prompt_status = self.answer_aug_original_prompt_status()
+            if self.args.answer_aug_use_original_metamath_prompt and not self.answer_aug_original_prompt_supported():
+                raise SystemExit(
+                    "[ERROR] --answer-aug-use-original-metamath-prompt is only native for GSM8K "
+                    "and borrowed for math/math-500/numinamath. "
+                    f"Dataset {self.distill_dataset_name()} should use DataObs dataset-specific prompts."
+                )
+            if self.args.answer_aug_use_original_metamath_prompt and prompt_status == "borrowed":
+                print(
+                    "[WARN] --answer-aug-use-original-metamath-prompt is borrowed from the GSM8K/MetaMath "
+                    f"answer prompt for {self.distill_dataset_name()}, not a native dataset prompt."
+                )
+            if not self.args.answer_aug_use_original_metamath_prompt:
+                print(
+                    "[WARN] answer_augmentation defaults to the DataObs dataset-specific prompt. "
+                    "Use --answer-aug-use-original-metamath-prompt only for original MetaMath baseline reproduction."
+                )
+            cmd += ["--num-augmented-answers", str(self.args.teacher_num_samples)]
+            if self.args.answer_aug_use_original_metamath_prompt:
+                cmd.append("--use-original-metamath-prompt")
+        elif distill_method == "question_rephrasing":
+            cmd += [
+                "--num-rephrases",
+                str(self.args.teacher_num_samples),
+                "--num-cots",
+                str(self.args.rephrase_num_cots),
+                "--rephrase-max-new-tokens",
+                str(self.args.rephrase_max_new_tokens),
+            ]
+        elif distill_method == "question_augmentation":
+            cmd += [
+                "--num-backward-questions",
+                str(self.args.teacher_num_samples),
+                "--backward-question-max-new-tokens",
+                str(self.args.backward_question_max_new_tokens),
+            ]
+        elif distill_method == "reverse_thinking":
+            cmd += [
+                "--backward-question-max-new-tokens",
+                str(self.args.backward_question_max_new_tokens),
+                "--consistency-max-new-tokens",
+                str(self.args.consistency_max_new_tokens),
+            ]
+        needs_do_sample = bool(self.args.teacher_do_sample)
+        if distill_method == "answer_augmentation" and self.args.teacher_num_samples > 1:
+            needs_do_sample = True
+        elif distill_method == "question_rephrasing" and (
+            self.args.teacher_num_samples > 1 or self.args.rephrase_num_cots > 1
+        ):
+            needs_do_sample = True
+        elif distill_method == "question_augmentation" and self.args.teacher_num_samples > 1:
+            needs_do_sample = True
+        if needs_do_sample:
             cmd.append("--do-sample")
+        if self.args.trust_remote_code:
+            cmd.append("--trust-remote-code")
         if self.args.disable_teacher_filter:
             cmd.append("--disable-teacher-filter")
         if self.args.smoke_num_rows > 0:
             cmd += ["--smoke-num-rows", str(self.args.smoke_num_rows)]
         self.run_cmd("distill", cmd)
+        self.results["distill_method"] = distill_method
         self.results["distill_output"] = str(self.distill_output)
         self.results["distill_candidates"] = str(self.distill_output.with_name(f"{self.distill_output.stem}.candidates.parquet"))
         self.results["distill_summary"] = str(self.distill_output.with_name(f"{self.distill_output.stem}.summary.json"))
+        self.results["distill_config"] = self.build_distill_config()
 
     def stage_metrics(self) -> None:
         data_path = self.args.metrics_data or self.sft_data_path()
@@ -480,6 +776,17 @@ class Pipeline:
         check_input(self.args.base_model, "base model", True, self.args.dry_run)
         check_input(sft_data, "SFT train data", True, self.args.dry_run)
         check_input(sft_val_data, "SFT val data", True, self.args.dry_run)
+        if not self.args.dry_run:
+            train_rows = parquet_num_rows(sft_data)
+            train_batch_size = hydra_int_override(self.args.sft_arg, "data.train_batch_size", 8)
+            if train_rows is not None and train_rows < train_batch_size:
+                raise SystemExit(
+                    "[ERROR] SFT train data has "
+                    f"{train_rows} rows, but data.train_batch_size={train_batch_size}. "
+                    "verl SFT uses drop_last=True, so this would run 0 training steps "
+                    "and produce no checkpoint. Increase the smoke/distill rows or set "
+                    "--sft-arg data.train_batch_size=1 --sft-arg data.micro_batch_size_per_gpu=1."
+                )
         cmd = [
             "bash",
             str(REPO_ROOT / "DataObs" / "lib" / "training" / "sft_dataobs.sh"),
@@ -602,6 +909,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-name", default="", help="Override MODEL_NAME used by eval scripts.")
 
     # Distillation.
+    parser.add_argument("--distill-method", default="teacher_correctness_filter", choices=DISTILL_METHODS)
     parser.add_argument("--distill-dataset", default="")
     parser.add_argument("--distill-input", default="")
     parser.add_argument("--distill-output", default="")
@@ -614,9 +922,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--teacher-max-new-tokens", type=int, default=8192)
     parser.add_argument("--teacher-tensor-parallel-size", type=int, default=1)
     parser.add_argument("--teacher-gpu-memory-utilization", type=float, default=0.95)
+    parser.add_argument(
+        "--teacher-dtype",
+        default="auto",
+        choices=["auto", "float16", "bfloat16", "float32"],
+    )
     parser.add_argument("--teacher-correct-threshold", type=float, default=0.99)
     parser.add_argument("--teacher-do-sample", action="store_true")
+    parser.add_argument("--trust-remote-code", action="store_true")
     parser.add_argument("--disable-teacher-filter", action="store_true")
+    parser.add_argument("--answer-aug-use-original-metamath-prompt", action="store_true")
+    parser.add_argument("--rephrase-num-cots", type=int, default=1)
+    parser.add_argument("--rephrase-max-new-tokens", type=int, default=512)
+    parser.add_argument("--backward-question-max-new-tokens", type=int, default=1024)
+    parser.add_argument("--consistency-max-new-tokens", type=int, default=1024)
     parser.add_argument("--smoke-num-rows", type=int, default=0)
 
     # Metrics.
@@ -658,7 +977,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--grpo-env", action="append", default=[], help="Environment override for GRPO, KEY=VALUE; repeatable.")
 
     args = parser.parse_args()
-    if args.teacher_num_samples > 1 and not args.teacher_do_sample:
+    return normalize_distill_args(args)
+
+
+def normalize_distill_args(args: argparse.Namespace) -> argparse.Namespace:
+    if args.distill_method == "reverse_thinking" and args.teacher_num_samples > 1:
+        raise SystemExit(
+            "[ERROR] --distill-method reverse_thinking does not support "
+            "--teacher-num-samples > 1 yet. Use 1 to keep the current single-path setting."
+        )
+
+    needs_do_sample = bool(args.teacher_do_sample)
+    if args.distill_method == "answer_augmentation" and args.teacher_num_samples > 1:
+        needs_do_sample = True
+    elif args.distill_method == "question_rephrasing" and (
+        args.teacher_num_samples > 1 or getattr(args, "rephrase_num_cots", 1) > 1
+    ):
+        needs_do_sample = True
+    elif args.distill_method == "question_augmentation" and args.teacher_num_samples > 1:
+        needs_do_sample = True
+
+    if needs_do_sample:
         args.teacher_do_sample = True
     return args
 

@@ -54,17 +54,20 @@ MODEL_SPECS: list[dict[str, Any]] = [
 ]
 
 DATASETS = [
+    "aime25",
     "gsm8k",
     "math-500",
     "numinamath",
     "arc-challenge",
     "aqua-rat",
     "commonsenseqa",
+    "gpqa-diamond",
     "strategyqa",
     "mbpp",
     "mbppplus",
     "humaneval",
     "humanevalplus",
+    "ifeval",
 ]
 
 

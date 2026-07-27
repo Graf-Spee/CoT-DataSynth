@@ -1,0 +1,26 @@
+{
+  "dataset": "ifeval",
+  "model_path": "/data/hrh/COT/experiments/exp5000_gsm8k_qwen3_difficulty_easy_distill/grpo/global_step_233/actor/merged_model",
+  "num_samples": 541,
+  "accuracy": 0.789279112754159,
+  "num_correct": 427,
+  "elapsed_sec": 89.51281976699829,
+  "opencompass_metrics": {
+    "Prompt-level-strict-accuracy": 78.9279112754159,
+    "Inst-level-strict-accuracy": 85.01199040767386,
+    "Prompt-level-loose-accuracy": 82.2550831792976,
+    "Inst-level-loose-accuracy": 87.41007194244604
+  },
+  "config": {
+    "num_samples_per_prompt": 1,
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "top_k": -1,
+    "max_response_len": 4096,
+    "batch_size": 8,
+    "enable_thinking": false,
+    "score_without_reasoning": true,
+    "metric_primary": "Prompt-level-strict-accuracy",
+    "alignment": "OpenCompass IFEvaluator"
+  }
+}

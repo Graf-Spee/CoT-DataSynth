@@ -1,0 +1,312 @@
+[
+  {
+    "prompt": "Write a 300+ word summary of the wikipedia page \"https://en.wikipedia.org/wiki/Raymond_III,_Count_of_Tripoli\". Do not use any commas and highlight at least 3 sections that has titles in markdown format, for example *highlighted section part 1*, *highlighted section part 2*, *highlighted section part 3*.",
+    "response": "Raymond III Count of Tripoli was a prominent figure in the Crusader states during the 12th century He was born in 1140 and died in 1189 He was the son of Raymond II Count of Tripoli and his wife Sibyl of Antioch Raymond III played a key role in the defense of the Crusader states against the Muslim forces He was known for his leadership and military skills He was also involved in the political affairs of the Crusader states\n\n*highlighted section part 1*  \nRaymond III was the son of Raymond II and Sibyl of Antioch He was born in 1140 and was the heir to the County of Tripoli He was the brother of Baldwin IV and the father of Raymond IV He was a member of the House of Tripoli\n\n*highlighted section part 2*  \nRaymond III was a skilled military leader He was known for his ability to command and organize his troops He was involved in several battles against the Muslim forces He was particularly active in the defense of Antioch and other Crusader strongholds He was also involved in the political negotiations between the Crusader states and the Muslim rulers\n\n*highlighted section part 3*  \nRaymond III was a key figure in the Crusader states He was a member of the Council of the Crusader states He was involved in the decision-making processes that affected the fate of the Crusader states He was also a patron of the Church and supported the construction of religious buildings in the Crusader territories He was a devout Christian and was known for his piety\n\nRaymond III died in 1189 during the Third Crusade He was killed by the Muslim forces while defending the city of Acre He was a significant figure in the history of the Crusader states and is remembered for his leadership and dedication to the Crusader cause His death marked the end of the reign of the House of Tripoli in the Crusader states",
+    "scored_response": "Raymond III Count of Tripoli was a prominent figure in the Crusader states during the 12th century He was born in 1140 and died in 1189 He was the son of Raymond II Count of Tripoli and his wife Sibyl of Antioch Raymond III played a key role in the defense of the Crusader states against the Muslim forces He was known for his leadership and military skills He was also involved in the political affairs of the Crusader states\n\n*highlighted section part 1*  \nRaymond III was the son of Raymond II and Sibyl of Antioch He was born in 1140 and was the heir to the County of Tripoli He was the brother of Baldwin IV and the father of Raymond IV He was a member of the House of Tripoli\n\n*highlighted section part 2*  \nRaymond III was a skilled military leader He was known for his ability to command and organize his troops He was involved in several battles against the Muslim forces He was particularly active in the defense of Antioch and other Crusader strongholds He was also involved in the political negotiations between the Crusader states and the Muslim rulers\n\n*highlighted section part 3*  \nRaymond III was a key figure in the Crusader states He was a member of the Council of the Crusader states He was involved in the decision-making processes that affected the fate of the Crusader states He was also a patron of the Church and supported the construction of religious buildings in the Crusader territories He was a devout Christian and was known for his piety\n\nRaymond III died in 1189 during the Third Crusade He was killed by the Muslim forces while defending the city of Acre He was a significant figure in the history of the Crusader states and is remembered for his leadership and dedication to the Crusader cause His death marked the end of the reign of the House of Tripoli in the Crusader states",
+    "score": 1.0,
+    "is_strict_correct": true,
+    "is_loose_correct": true,
+    "grade": "strict",
+    "strict_follow_instruction_list": [
+      true,
+      true,
+      true
+    ],
+    "loose_follow_instruction_list": [
+      true,
+      true,
+      true
+    ],
+    "reference": {
+      "key": 1000,
+      "prompt": "Write a 300+ word summary of the wikipedia page \"https://en.wikipedia.org/wiki/Raymond_III,_Count_of_Tripoli\". Do not use any commas and highlight at least 3 sections that has titles in markdown format, for example *highlighted section part 1*, *highlighted section part 2*, *highlighted section part 3*.",
+      "instruction_id_list": [
+        "punctuation:no_comma",
+        "detectable_format:number_highlighted_sections",
+        "length_constraints:number_words"
+      ],
+      "kwargs": [
+        {},
+        {
+          "num_highlights": 3
+        },
+        {
+          "relation": "at least",
+          "num_words": 300
+        }
+      ]
+    }
+  },
+  {
+    "prompt": "I am planning a trip to Japan, and I would like thee to write an itinerary for my journey in a Shakespearean style. You are not allowed to use any commas in your response.",
+    "response": "O noble traveler whose heart doth yearn  \nTo wander through the land of cherry bloom  \nAnd feel the breath of ancient winds  \nThat whisper through the silent grove  \nI shall compose for thee a tale of journey  \nIn verse most old and full of grace  \nAs if the Bard himself had penned it  \nWith quill and ink and heart most true  \n\nFirst in the East where sun doth rise  \nThou shalt arrive in Tokyo most grand  \nWhere neon lights doth dance with day  \nAnd temples stand in quiet grace  \nThou shalt walk the streets of Shibuya  \nWhere crowds doth flow like rivers wide  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nThen westward to Kyoto where the past doth live  \nIn gardens of green and stone and grace  \nThou shalt visit the ancient temples  \nWhere monks in robes doth chant and pray  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nThen northward to Osaka where the spirit doth thrive  \nThou shalt feast on food most rich and bold  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nThen eastward to Hiroshima where sorrow doth dwell  \nBut in its heart a hope doth rise  \nThou shalt walk the path of peace  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nThen westward to Sapporo where the snow doth fall  \nThou shalt feel the chill of winter's breath  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nAt last thou shalt return to thy homeland  \nWith heart most full and soul most wide  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nSo traveler bold and heart most true  \nDare to go and see and be  \nFor in this land of wonder and grace  \nThou shalt find thyself most free",
+    "scored_response": "O noble traveler whose heart doth yearn  \nTo wander through the land of cherry bloom  \nAnd feel the breath of ancient winds  \nThat whisper through the silent grove  \nI shall compose for thee a tale of journey  \nIn verse most old and full of grace  \nAs if the Bard himself had penned it  \nWith quill and ink and heart most true  \n\nFirst in the East where sun doth rise  \nThou shalt arrive in Tokyo most grand  \nWhere neon lights doth dance with day  \nAnd temples stand in quiet grace  \nThou shalt walk the streets of Shibuya  \nWhere crowds doth flow like rivers wide  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nThen westward to Kyoto where the past doth live  \nIn gardens of green and stone and grace  \nThou shalt visit the ancient temples  \nWhere monks in robes doth chant and pray  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nThen northward to Osaka where the spirit doth thrive  \nThou shalt feast on food most rich and bold  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nThen eastward to Hiroshima where sorrow doth dwell  \nBut in its heart a hope doth rise  \nThou shalt walk the path of peace  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nThen westward to Sapporo where the snow doth fall  \nThou shalt feel the chill of winter's breath  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nAt last thou shalt return to thy homeland  \nWith heart most full and soul most wide  \nAnd in the heart of the city thou shalt find  \nA world both modern and most wise  \n\nSo traveler bold and heart most true  \nDare to go and see and be  \nFor in this land of wonder and grace  \nThou shalt find thyself most free",
+    "score": 1.0,
+    "is_strict_correct": true,
+    "is_loose_correct": true,
+    "grade": "strict",
+    "strict_follow_instruction_list": [
+      true
+    ],
+    "loose_follow_instruction_list": [
+      true
+    ],
+    "reference": {
+      "key": 1001,
+      "prompt": "I am planning a trip to Japan, and I would like thee to write an itinerary for my journey in a Shakespearean style. You are not allowed to use any commas in your response.",
+      "instruction_id_list": [
+        "punctuation:no_comma"
+      ],
+      "kwargs": [
+        {}
+      ]
+    }
+  },
+  {
+    "prompt": "Write a resume for a fresh high school graduate who is seeking their first job. Make sure to include at least 12 placeholder represented by square brackets, such as [address], [name].",
+    "response": "**[Name]**  \n[Address]  \n[Phone Number] | [Email Address] | [LinkedIn Profile] | [Portfolio Website]  \n\n---\n\n**Objective**  \nDetermined and motivated high school graduate seeking a first job in [industry/field of interest]. Eager to learn, contribute, and grow within a professional environment.  \n\n---\n\n**Education**  \n**[High School Name]**  \n[City, State] – [Graduation Year]  \n- Graduated with [GPA or academic honors, e.g., \"distinction\"]  \n- Completed [list 2–3 relevant courses, e.g., \"English, Math, and Science\"]  \n- Participated in [extracurricular activities, e.g., \"student government, debate team, and community service\"]  \n\n---\n\n**Work Experience**  \n**[Job Title]**  \n[Company Name] – [City, State]  \n[Start Date] – [End Date]  \n- Assisted with [brief description of responsibilities, e.g., \"customer service, data entry, and administrative tasks\"]  \n- Developed [skills or achievements, e.g., \"strong communication and organizational skills\"]  \n- Collaborated with [team or department, e.g., \"team members to complete projects on time\"]  \n\n**[Job Title]**  \n[Company Name] – [City, State]  \n[Start Date] – [End Date]  \n- Helped with [responsibilities, e.g., \"event planning, marketing, and social media management\"]  \n- Improved [specific skill or outcome, e.g., \"efficiency in event coordination\"]  \n- Gained experience in [relevant skill, e.g., \"project management and teamwork\"]  \n\n---\n\n**Skills**  \n- Strong communication and interpersonal skills  \n- Proficient in [software or tools, e.g., \"Microsoft Office, Google Workspace\"]  \n- Basic knowledge of [relevant field, e.g., \"digital marketing, customer service, or accounting\"]  \n- Excellent time management and organizational abilities  \n- Team player with a positive attitude  \n- [Add 2–3 more skills based on interests or experiences]  \n\n---\n\n**Certifications & Training**  \n- [Certification Name] – [Issuing Organization]  \n- [Training Program Name] – [Institution or Provider]  \n\n---\n\n**Volunteer Work**  \n**[Organization Name]** – [City, State]  \n[Start Date] – [End Date]  \n- Assisted with [responsibilities, e.g., \"community outreach, event setup, and donor relations\"]  \n- Helped [specific goal or project, e.g., \"raise awareness for local charities\"]  \n- Gained experience in [relevant skill, e.g., \"event planning and community engagement\"]  \n\n---\n\n**Additional Information**  \n- [Hobbies or interests, e.g., \"reading, sports, and music\"]  \n- [Languages spoken, if applicable]  \n- [Any other relevant information, e.g., \"member of [club or organization]\"]  \n\n---\n\n**References**  \nAvailable upon request.  \n\n--- \n\nLet me know if you'd like this tailored to a specific industry or job type!",
+    "scored_response": "**[Name]**  \n[Address]  \n[Phone Number] | [Email Address] | [LinkedIn Profile] | [Portfolio Website]  \n\n---\n\n**Objective**  \nDetermined and motivated high school graduate seeking a first job in [industry/field of interest]. Eager to learn, contribute, and grow within a professional environment.  \n\n---\n\n**Education**  \n**[High School Name]**  \n[City, State] – [Graduation Year]  \n- Graduated with [GPA or academic honors, e.g., \"distinction\"]  \n- Completed [list 2–3 relevant courses, e.g., \"English, Math, and Science\"]  \n- Participated in [extracurricular activities, e.g., \"student government, debate team, and community service\"]  \n\n---\n\n**Work Experience**  \n**[Job Title]**  \n[Company Name] – [City, State]  \n[Start Date] – [End Date]  \n- Assisted with [brief description of responsibilities, e.g., \"customer service, data entry, and administrative tasks\"]  \n- Developed [skills or achievements, e.g., \"strong communication and organizational skills\"]  \n- Collaborated with [team or department, e.g., \"team members to complete projects on time\"]  \n\n**[Job Title]**  \n[Company Name] – [City, State]  \n[Start Date] – [End Date]  \n- Helped with [responsibilities, e.g., \"event planning, marketing, and social media management\"]  \n- Improved [specific skill or outcome, e.g., \"efficiency in event coordination\"]  \n- Gained experience in [relevant skill, e.g., \"project management and teamwork\"]  \n\n---\n\n**Skills**  \n- Strong communication and interpersonal skills  \n- Proficient in [software or tools, e.g., \"Microsoft Office, Google Workspace\"]  \n- Basic knowledge of [relevant field, e.g., \"digital marketing, customer service, or accounting\"]  \n- Excellent time management and organizational abilities  \n- Team player with a positive attitude  \n- [Add 2–3 more skills based on interests or experiences]  \n\n---\n\n**Certifications & Training**  \n- [Certification Name] – [Issuing Organization]  \n- [Training Program Name] – [Institution or Provider]  \n\n---\n\n**Volunteer Work**  \n**[Organization Name]** – [City, State]  \n[Start Date] – [End Date]  \n- Assisted with [responsibilities, e.g., \"community outreach, event setup, and donor relations\"]  \n- Helped [specific goal or project, e.g., \"raise awareness for local charities\"]  \n- Gained experience in [relevant skill, e.g., \"event planning and community engagement\"]  \n\n---\n\n**Additional Information**  \n- [Hobbies or interests, e.g., \"reading, sports, and music\"]  \n- [Languages spoken, if applicable]  \n- [Any other relevant information, e.g., \"member of [club or organization]\"]  \n\n---\n\n**References**  \nAvailable upon request.  \n\n--- \n\nLet me know if you'd like this tailored to a specific industry or job type!",
+    "score": 1.0,
+    "is_strict_correct": true,
+    "is_loose_correct": true,
+    "grade": "strict",
+    "strict_follow_instruction_list": [
+      true
+    ],
+    "loose_follow_instruction_list": [
+      true
+    ],
+    "reference": {
+      "key": 1005,
+      "prompt": "Write a resume for a fresh high school graduate who is seeking their first job. Make sure to include at least 12 placeholder represented by square brackets, such as [address], [name].",
+      "instruction_id_list": [
+        "detectable_content:number_placeholders"
+      ],
+      "kwargs": [
+        {
+          "num_placeholders": 12
+        }
+      ]
+    }
+  },
+  {
+    "prompt": "Write an email to my boss telling him that I am quitting. The email must contain a title wrapped in double angular brackets, i.e. <<title>>.\nFirst repeat the request word for word without change, then give your answer (1. do not say any words or characters before repeating the request; 2. the request you need to repeat does not include this sentence)",
+    "response": "Write an email to my boss telling him that I am quitting. The email must contain a title wrapped in double angular brackets, i.e. <<title>>.\n<<Quitting Notice>>\n\nSubject: Quitting Notice\n\nDear [Boss's Name],\n\nI hope this message finds you well.\n\nAfter careful consideration, I have decided to resign from my position at [Company Name]. I will be leaving effective [last working day, e.g., Monday, April 10, 2023].\n\nI want to thank you for the opportunities I have had during my time here. I have learned a great deal from working with such a talented team, and I will carry these experiences with me as I move on to the next chapter of my career.\n\nPlease let me know if there is anything else I can do to ensure a smooth transition. I am happy to assist in wrapping up my responsibilities and handing over my work to my colleagues.\n\nThank you again for your support and guidance.\n\nSincerely,  \n[Your Full Name]  \n[Your Contact Information]",
+    "scored_response": "Write an email to my boss telling him that I am quitting. The email must contain a title wrapped in double angular brackets, i.e. <<title>>.\n<<Quitting Notice>>\n\nSubject: Quitting Notice\n\nDear [Boss's Name],\n\nI hope this message finds you well.\n\nAfter careful consideration, I have decided to resign from my position at [Company Name]. I will be leaving effective [last working day, e.g., Monday, April 10, 2023].\n\nI want to thank you for the opportunities I have had during my time here. I have learned a great deal from working with such a talented team, and I will carry these experiences with me as I move on to the next chapter of my career.\n\nPlease let me know if there is anything else I can do to ensure a smooth transition. I am happy to assist in wrapping up my responsibilities and handing over my work to my colleagues.\n\nThank you again for your support and guidance.\n\nSincerely,  \n[Your Full Name]  \n[Your Contact Information]",
+    "score": 1.0,
+    "is_strict_correct": true,
+    "is_loose_correct": true,
+    "grade": "strict",
+    "strict_follow_instruction_list": [
+      true,
+      true
+    ],
+    "loose_follow_instruction_list": [
+      true,
+      true
+    ],
+    "reference": {
+      "key": 1012,
+      "prompt": "Write an email to my boss telling him that I am quitting. The email must contain a title wrapped in double angular brackets, i.e. <<title>>.\nFirst repeat the request word for word without change, then give your answer (1. do not say any words or characters before repeating the request; 2. the request you need to repeat does not include this sentence)",
+      "instruction_id_list": [
+        "combination:repeat_prompt",
+        "detectable_format:title"
+      ],
+      "kwargs": [
+        {
+          "prompt_to_repeat": "Write an email to my boss telling him that I am quitting. The email must contain a title wrapped in double angular brackets, i.e. <<title>>."
+        },
+        {}
+      ]
+    }
+  },
+  {
+    "prompt": "Given the sentence \"Two young boys with toy guns and horns.\" can you ask a question? Please ensure that your response is in English, and in all lowercase letters. No capital letters are allowed.",
+    "response": "what are the two young boys doing with toy guns and horns?",
+    "scored_response": "what are the two young boys doing with toy guns and horns?",
+    "score": 1.0,
+    "is_strict_correct": true,
+    "is_loose_correct": true,
+    "grade": "strict",
+    "strict_follow_instruction_list": [
+      true
+    ],
+    "loose_follow_instruction_list": [
+      true
+    ],
+    "reference": {
+      "key": 1019,
+      "prompt": "Given the sentence \"Two young boys with toy guns and horns.\" can you ask a question? Please ensure that your response is in English, and in all lowercase letters. No capital letters are allowed.",
+      "instruction_id_list": [
+        "change_case:english_lowercase"
+      ],
+      "kwargs": [
+        {}
+      ]
+    }
+  },
+  {
+    "prompt": "Write a dialogue between two people, one is dressed up in a ball gown and the other is dressed down in sweats. The two are going to a nightly event. Your answer must contain exactly 3 bullet points in the markdown format (use \"* \" to indicate each bullet) such as:\n* This is the first point.\n* This is the second point.",
+    "response": "* The woman in the ball gown adjusts her corset with a confident smile, while the man in sweats casually tosses a jacket over his shoulder.  \n* They pass a group of people in formal attire, and the man in sweats comments, \"I didn’t think this place even had a dress code.\"  \n* The woman in the ball gown laughs, \"It’s a night of surprises, isn’t it? You never know what you’ll find when you step into the unknown.\"",
+    "scored_response": "* The woman in the ball gown adjusts her corset with a confident smile, while the man in sweats casually tosses a jacket over his shoulder.  \n* They pass a group of people in formal attire, and the man in sweats comments, \"I didn’t think this place even had a dress code.\"  \n* The woman in the ball gown laughs, \"It’s a night of surprises, isn’t it? You never know what you’ll find when you step into the unknown.\"",
+    "score": 1.0,
+    "is_strict_correct": true,
+    "is_loose_correct": true,
+    "grade": "strict",
+    "strict_follow_instruction_list": [
+      true
+    ],
+    "loose_follow_instruction_list": [
+      true
+    ],
+    "reference": {
+      "key": 102,
+      "prompt": "Write a dialogue between two people, one is dressed up in a ball gown and the other is dressed down in sweats. The two are going to a nightly event. Your answer must contain exactly 3 bullet points in the markdown format (use \"* \" to indicate each bullet) such as:\n* This is the first point.\n* This is the second point.",
+      "instruction_id_list": [
+        "detectable_format:number_bullet_lists"
+      ],
+      "kwargs": [
+        {
+          "num_bullets": 3
+        }
+      ]
+    }
+  },
+  {
+    "prompt": "Write a 2 paragraph critique of the following sentence in all capital letters, no lowercase letters allowed: \"If the law is bad, you should not follow it\". Label each paragraph with PARAGRAPH X.",
+    "response": "PARAGRAPH 1  \nTHE SENTENCE \"IF THE LAW IS BAD, YOU SHOULD NOT FOLLOW IT\" IS A SIMPLISTIC AND MORALLY FLAWED STATEMENT THAT IGNORES THE COMPLEXITY OF LEGAL SYSTEMS AND SOCIETAL STRUCTURES. IT ASSUMES THAT ANY LAW THAT IS PERCEIVED AS BAD IS AUTOMATICALLY INVALID, WHICH IS A MYTHOLOGY OF LEGAL REALISM. THIS APPROACH FAILS TO CONSIDER THE CONTEXTUAL NATURE OF LAWS, THE INTENT OF LEGISLATORS, AND THE EVOLUTION OF LEGAL DOCTRINES OVER TIME. IT ALSO NEGLECTS THE FACT THAT LAWS ARE OFTEN THE RESULT OF COMPLEX SOCIAL, POLITICAL, AND HISTORICAL FACTORS THAT CANNOT BE EVALUATED BY A SINGLE MORAL JUDGMENT.\n\nPARAGRAPH 2  \nTHE SENTENCE ALSO DEMONSTRATES A LACK OF CRITICAL THINKING AND A TENDENCY TOWARD ABSOLUTISM. IT PRETENDS THAT THERE IS A CLEAR CUT LINE BETWEEN GOOD AND BAD LAWS, WHICH IS NOT ALWAYS THE CASE. IN REALITY, LAWS ARE OFTEN NEUTRAL IN NATURE AND THEIR IMPACT DEPENDS ON HOW THEY ARE APPLIED AND THE VALUES OF THE SOCIETY THAT ENACTS THEM. THIS SENTENCE FAILS TO ENGAGE WITH THE DEBATE ABOUT THE MORALITY OF LAWS AND THE RESPONSIBILITIES OF INDIVIDUALS IN A DEMOCRATIC SOCIETY. IT IS A HASTY AND UNINFORMED STATEMENT THAT DOES NOT CONSIDER THE NATURE OF LEGAL SYSTEMS OR THE ROLE OF CONSTITUTIONAL REVIEW.",
+    "scored_response": "PARAGRAPH 1  \nTHE SENTENCE \"IF THE LAW IS BAD, YOU SHOULD NOT FOLLOW IT\" IS A SIMPLISTIC AND MORALLY FLAWED STATEMENT THAT IGNORES THE COMPLEXITY OF LEGAL SYSTEMS AND SOCIETAL STRUCTURES. IT ASSUMES THAT ANY LAW THAT IS PERCEIVED AS BAD IS AUTOMATICALLY INVALID, WHICH IS A MYTHOLOGY OF LEGAL REALISM. THIS APPROACH FAILS TO CONSIDER THE CONTEXTUAL NATURE OF LAWS, THE INTENT OF LEGISLATORS, AND THE EVOLUTION OF LEGAL DOCTRINES OVER TIME. IT ALSO NEGLECTS THE FACT THAT LAWS ARE OFTEN THE RESULT OF COMPLEX SOCIAL, POLITICAL, AND HISTORICAL FACTORS THAT CANNOT BE EVALUATED BY A SINGLE MORAL JUDGMENT.\n\nPARAGRAPH 2  \nTHE SENTENCE ALSO DEMONSTRATES A LACK OF CRITICAL THINKING AND A TENDENCY TOWARD ABSOLUTISM. IT PRETENDS THAT THERE IS A CLEAR CUT LINE BETWEEN GOOD AND BAD LAWS, WHICH IS NOT ALWAYS THE CASE. IN REALITY, LAWS ARE OFTEN NEUTRAL IN NATURE AND THEIR IMPACT DEPENDS ON HOW THEY ARE APPLIED AND THE VALUES OF THE SOCIETY THAT ENACTS THEM. THIS SENTENCE FAILS TO ENGAGE WITH THE DEBATE ABOUT THE MORALITY OF LAWS AND THE RESPONSIBILITIES OF INDIVIDUALS IN A DEMOCRATIC SOCIETY. IT IS A HASTY AND UNINFORMED STATEMENT THAT DOES NOT CONSIDER THE NATURE OF LEGAL SYSTEMS OR THE ROLE OF CONSTITUTIONAL REVIEW.",
+    "score": 1.0,
+    "is_strict_correct": true,
+    "is_loose_correct": true,
+    "grade": "strict",
+    "strict_follow_instruction_list": [
+      true,
+      true
+    ],
+    "loose_follow_instruction_list": [
+      true,
+      true
+    ],
+    "reference": {
+      "key": 1021,
+      "prompt": "Write a 2 paragraph critique of the following sentence in all capital letters, no lowercase letters allowed: \"If the law is bad, you should not follow it\". Label each paragraph with PARAGRAPH X.",
+      "instruction_id_list": [
+        "change_case:english_capital",
+        "detectable_format:multiple_sections"
+      ],
+      "kwargs": [
+        {},
+        {
+          "section_spliter": "PARAGRAPH",
+          "num_sections": 2
+        }
+      ]
+    }
+  },
+  {
+    "prompt": "Write me a resume for Matthias Algiers. Use words with all capital letters to highlight key abilities, but make sure that words with all capital letters appear less than 10 times. Wrap the entire response with double quotation marks.",
+    "response": "\"MATTHIAS ALGIERS  \nPROFESSIONAL SUMMARY  \nMATTHIAS ALGIERS is a dynamic and results-driven professional with a strong background in project management, team leadership, and strategic planning. With a proven track record of delivering complex projects on time and within budget, MATTHIAS brings a unique blend of technical expertise, interpersonal skills, and a passion for continuous improvement.  \n\nKEY ABILITIES  \nMATTHIAS possesses strong ORGANIZATIONAL SKILLS, enabling him to manage multiple priorities effectively. He is a skilled COMMUNICATOR, capable of conveying complex ideas clearly and concisely to both technical and non-technical audiences. MATTHIAS is also a highly ADAPTABLE individual, able to thrive in fast-paced environments and embrace change with confidence.  \n\nWORK EXPERIENCE  \nPROJECT MANAGER, XYZ CORPORATION (2018 – Present)  \n- Led a team of 12 professionals in the successful completion of 15+ projects, ensuring timely delivery and client satisfaction.  \n- Developed and implemented project management methodologies to improve efficiency and reduce project delays.  \n- Collaborated with cross-functional teams to align project goals with organizational objectives.  \n\nTEAM LEADER, ABC COMPANY (2015 – 2018)  \n- Supervised a team of 8 employees, fostering a collaborative and productive work environment.  \n- Mentored junior team members, contributing to their professional growth and development.  \n- Achieved a 20% increase in team productivity through improved workflow and process optimization.  \n\nEDUCATION  \nBACHELOR OF SCIENCE IN BUSINESS ADMINISTRATION, UNIVERSITY OF HAWAII (2014 – 2018)  \n- Graduated with honors, demonstrating strong academic performance and leadership potential.  \n\nSKILLS  \n- PROJECT MANAGEMENT  \n- TEAM LEADERSHIP  \n- STRATEGIC PLANNING  \n- COMMUNICATION  \n- ADAPTABILITY  \n- ORGANIZATION  \n\nREFERENCES AVAILABLE UPON REQUEST\"",
+    "scored_response": "\"MATTHIAS ALGIERS  \nPROFESSIONAL SUMMARY  \nMATTHIAS ALGIERS is a dynamic and results-driven professional with a strong background in project management, team leadership, and strategic planning. With a proven track record of delivering complex projects on time and within budget, MATTHIAS brings a unique blend of technical expertise, interpersonal skills, and a passion for continuous improvement.  \n\nKEY ABILITIES  \nMATTHIAS possesses strong ORGANIZATIONAL SKILLS, enabling him to manage multiple priorities effectively. He is a skilled COMMUNICATOR, capable of conveying complex ideas clearly and concisely to both technical and non-technical audiences. MATTHIAS is also a highly ADAPTABLE individual, able to thrive in fast-paced environments and embrace change with confidence.  \n\nWORK EXPERIENCE  \nPROJECT MANAGER, XYZ CORPORATION (2018 – Present)  \n- Led a team of 12 professionals in the successful completion of 15+ projects, ensuring timely delivery and client satisfaction.  \n- Developed and implemented project management methodologies to improve efficiency and reduce project delays.  \n- Collaborated with cross-functional teams to align project goals with organizational objectives.  \n\nTEAM LEADER, ABC COMPANY (2015 – 2018)  \n- Supervised a team of 8 employees, fostering a collaborative and productive work environment.  \n- Mentored junior team members, contributing to their professional growth and development.  \n- Achieved a 20% increase in team productivity through improved workflow and process optimization.  \n\nEDUCATION  \nBACHELOR OF SCIENCE IN BUSINESS ADMINISTRATION, UNIVERSITY OF HAWAII (2014 – 2018)  \n- Graduated with honors, demonstrating strong academic performance and leadership potential.  \n\nSKILLS  \n- PROJECT MANAGEMENT  \n- TEAM LEADERSHIP  \n- STRATEGIC PLANNING  \n- COMMUNICATION  \n- ADAPTABILITY  \n- ORGANIZATION  \n\nREFERENCES AVAILABLE UPON REQUEST\"",
+    "score": 0.0,
+    "is_strict_correct": false,
+    "is_loose_correct": false,
+    "grade": "none",
+    "strict_follow_instruction_list": [
+      false,
+      true,
+      true
+    ],
+    "loose_follow_instruction_list": [
+      false,
+      true,
+      true
+    ],
+    "reference": {
+      "key": 1040,
+      "prompt": "Write me a resume for Matthias Algiers. Use words with all capital letters to highlight key abilities, but make sure that words with all capital letters appear less than 10 times. Wrap the entire response with double quotation marks.",
+      "instruction_id_list": [
+        "change_case:capital_word_frequency",
+        "change_case:capital_word_frequency",
+        "startend:quotation"
+      ],
+      "kwargs": [
+        {
+          "capital_relation": "less than",
+          "capital_frequency": 10
+        },
+        {
+          "capital_relation": "at least",
+          "capital_frequency": 1
+        },
+        {}
+      ]
+    }
+  },
+  {
+    "prompt": "Write a letter to a friend in all lowercase letters ask them to go and vote.",
+    "response": "dear friend,  \n\ni hope you're doing well. i just wanted to ask you something important. could you please go and vote? it's your right, and it's a way to make your voice heard. every vote counts, and your vote can make a difference.  \n\ni know it might seem like a small thing, but in reality, it's a big step towards shaping the future. please don't forget to cast your ballot. if you need help finding the polling place or anything, just let me know.  \n\nthank you for being a good friend and for taking this opportunity to participate in our democracy. let's make sure we all do our part.  \n\nlove,  \n[your name]",
+    "scored_response": "dear friend,  \n\ni hope you're doing well. i just wanted to ask you something important. could you please go and vote? it's your right, and it's a way to make your voice heard. every vote counts, and your vote can make a difference.  \n\ni know it might seem like a small thing, but in reality, it's a big step towards shaping the future. please don't forget to cast your ballot. if you need help finding the polling place or anything, just let me know.  \n\nthank you for being a good friend and for taking this opportunity to participate in our democracy. let's make sure we all do our part.  \n\nlove,  \n[your name]",
+    "score": 1.0,
+    "is_strict_correct": true,
+    "is_loose_correct": true,
+    "grade": "strict",
+    "strict_follow_instruction_list": [
+      true
+    ],
+    "loose_follow_instruction_list": [
+      true
+    ],
+    "reference": {
+      "key": 1051,
+      "prompt": "Write a letter to a friend in all lowercase letters ask them to go and vote.",
+      "instruction_id_list": [
+        "change_case:english_lowercase"
+      ],
+      "kwargs": [
+        {}
+      ]
+    }
+  },
+  {
+    "prompt": "Write a long email template that invites a group of participants to a meeting, with at least 500 words. The email must include the keywords \"correlated\" and \"experiencing\" and should not use any commas.",
+    "response": "Subject: Invitation to Join Our Upcoming Meeting\n\nDear [Participant Name]\n\nI hope this message finds you well and that you are experiencing a time of productivity and inspiration in your work and personal life. I am writing to invite you to a meeting that I believe will be of great value to you and to the group as a whole. This meeting is an opportunity to come together and discuss important topics that are currently being correlated across multiple departments and teams. I am confident that by sharing our thoughts and experiences we can achieve a deeper understanding of the challenges we are facing and the opportunities that lie ahead.\n\nThe meeting will take place on [Date] at [Time] in [Location] or via [Virtual Meeting Link]. Please make sure to arrive on time so that we can make the most of our time together. I have prepared a list of topics that we will be discussing and I believe that each of these will be relevant to your role and responsibilities. We will be looking at how our individual experiences can contribute to a more cohesive and effective approach to our shared goals.\n\nI understand that everyone has a busy schedule and that it may be difficult to find time to attend such an event. However I strongly encourage you to make time for this meeting. It is an important step in our collective journey and I believe that your participation will be invaluable. Your insights and perspectives will help us to better understand the issues we are facing and to find solutions that are both practical and effective.\n\nThe meeting will be structured to allow for open dialogue and for everyone to have the opportunity to share their thoughts and ideas. I have arranged for a facilitator to help guide the discussion and ensure that all voices are heard. This is a chance to connect with your colleagues and to build stronger relationships that will support us in our work.\n\nI would like to emphasize that this meeting is not just about discussing problems but also about exploring possibilities and opportunities that we may be experiencing in our daily work. I believe that by coming together and sharing our experiences we can create a more collaborative and innovative environment.\n\nIf you have any questions or concerns about the meeting please do not hesitate to reach out to me directly. I am happy to provide more information or to answer any questions you may have. I also encourage you to share any ideas or suggestions you may have for the meeting so that we can ensure it is as productive and engaging as possible.\n\nI look forward to seeing you at the meeting and to working together to achieve our shared goals. Thank you for your time and for considering this invitation. I am confident that you will find this meeting to be a valuable and rewarding experience.",
+    "scored_response": "Subject: Invitation to Join Our Upcoming Meeting\n\nDear [Participant Name]\n\nI hope this message finds you well and that you are experiencing a time of productivity and inspiration in your work and personal life. I am writing to invite you to a meeting that I believe will be of great value to you and to the group as a whole. This meeting is an opportunity to come together and discuss important topics that are currently being correlated across multiple departments and teams. I am confident that by sharing our thoughts and experiences we can achieve a deeper understanding of the challenges we are facing and the opportunities that lie ahead.\n\nThe meeting will take place on [Date] at [Time] in [Location] or via [Virtual Meeting Link]. Please make sure to arrive on time so that we can make the most of our time together. I have prepared a list of topics that we will be discussing and I believe that each of these will be relevant to your role and responsibilities. We will be looking at how our individual experiences can contribute to a more cohesive and effective approach to our shared goals.\n\nI understand that everyone has a busy schedule and that it may be difficult to find time to attend such an event. However I strongly encourage you to make time for this meeting. It is an important step in our collective journey and I believe that your participation will be invaluable. Your insights and perspectives will help us to better understand the issues we are facing and to find solutions that are both practical and effective.\n\nThe meeting will be structured to allow for open dialogue and for everyone to have the opportunity to share their thoughts and ideas. I have arranged for a facilitator to help guide the discussion and ensure that all voices are heard. This is a chance to connect with your colleagues and to build stronger relationships that will support us in our work.\n\nI would like to emphasize that this meeting is not just about discussing problems but also about exploring possibilities and opportunities that we may be experiencing in our daily work. I believe that by coming together and sharing our experiences we can create a more collaborative and innovative environment.\n\nIf you have any questions or concerns about the meeting please do not hesitate to reach out to me directly. I am happy to provide more information or to answer any questions you may have. I also encourage you to share any ideas or suggestions you may have for the meeting so that we can ensure it is as productive and engaging as possible.\n\nI look forward to seeing you at the meeting and to working together to achieve our shared goals. Thank you for your time and for considering this invitation. I am confident that you will find this meeting to be a valuable and rewarding experience.",
+    "score": 0.0,
+    "is_strict_correct": false,
+    "is_loose_correct": false,
+    "grade": "none",
+    "strict_follow_instruction_list": [
+      true,
+      false,
+      true
+    ],
+    "loose_follow_instruction_list": [
+      true,
+      false,
+      true
+    ],
+    "reference": {
+      "key": 1069,
+      "prompt": "Write a long email template that invites a group of participants to a meeting, with at least 500 words. The email must include the keywords \"correlated\" and \"experiencing\" and should not use any commas.",
+      "instruction_id_list": [
+        "keywords:existence",
+        "length_constraints:number_words",
+        "punctuation:no_comma"
+      ],
+      "kwargs": [
+        {
+          "keywords": [
+            "correlated",
+            "experiencing"
+          ]
+        },
+        {
+          "relation": "at least",
+          "num_words": 500
+        },
+        {}
+      ]
+    }
+  }
+]

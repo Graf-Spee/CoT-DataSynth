@@ -69,6 +69,52 @@ def _resolve_test_category(dataset_name: str) -> str:
     return ds
 
 
+def _find_bfcl_root(explicit_root: Optional[str] = None) -> Path:
+    if explicit_root:
+        candidate = Path(explicit_root).expanduser().resolve()
+        if candidate.exists():
+            return candidate
+        raise FileNotFoundError(f"BFCL root not found: {candidate}")
+
+    for env_var in ("BFCL_ROOT", "BFCL_REPO_ROOT"):
+        env_root = os.getenv(env_var)
+        if env_root:
+            candidate = Path(env_root).expanduser().resolve()
+            if candidate.exists():
+                return candidate
+            raise FileNotFoundError(f"{env_var} points to a missing path: {candidate}")
+
+    script_dir = Path(__file__).resolve().parent
+    for ancestor in [script_dir, *script_dir.parents]:
+        for suffix in (
+            ("gorilla", "berkeley-function-call-leaderboard"),
+            ("berkeley-function-call-leaderboard",),
+        ):
+            candidate = ancestor.joinpath(*suffix)
+            if candidate.exists():
+                return candidate.resolve()
+
+    raise FileNotFoundError(
+        "Could not locate bfcl repository. Set --bfcl-root or BFCL_ROOT."
+    )
+
+
+def _resolve_bfcl_model_name(base_model: str, explicit_model_name: Optional[str]) -> str:
+    if explicit_model_name:
+        return explicit_model_name
+
+    env_model = os.getenv("BFCL_MODEL_NAME")
+    if env_model:
+        return env_model
+
+    base_name = base_model.rstrip("/").split("/")[-1]
+    normalized = re.sub(r"[^a-z0-9]+", "", base_name.lower())
+    alias_map = {
+        "qwen317b": "Qwen/Qwen3-1.7B",
+    }
+    return alias_map.get(normalized, base_model)
+
+
 def _extract_overall_accuracy(score_csv: Path, model_name: str) -> Optional[float]:
     if not score_csv.exists():
         return None
@@ -110,7 +156,13 @@ def main() -> int:
         "--bfcl-model-name",
         default=None,
         help="BFCL registry model name passed to `bfcl generate/evaluate`. "
-        "Default: use base_model as model name.",
+        "Default: infer from base_model or BFCL_MODEL_NAME.",
+    )
+    parser.add_argument(
+        "--bfcl-root",
+        default=None,
+        help="Path to the berkeley-function-call-leaderboard checkout. "
+        "Default: auto-detect from the current workspace or BFCL_ROOT.",
     )
     parser.add_argument(
         "--backend",
@@ -146,14 +198,9 @@ def main() -> int:
         print(f"[ERROR] Model path not found: {model_path}")
         return 1
 
-    script_dir = Path(__file__).resolve().parent
-    repo_root = script_dir.parent.parent
-    bfcl_root = (repo_root / "gorilla" / "berkeley-function-call-leaderboard").resolve()
-    if not bfcl_root.exists():
-        print(f"[ERROR] BFCL root not found: {bfcl_root}")
-        return 1
+    bfcl_root = _find_bfcl_root(args.bfcl_root)
 
-    bfcl_model_name = args.bfcl_model_name or args.base_model
+    bfcl_model_name = _resolve_bfcl_model_name(args.base_model, args.bfcl_model_name)
     test_category = _resolve_test_category(args.dataset_name)
     n_gpus = _count_gpus(args.gpu_id)
 

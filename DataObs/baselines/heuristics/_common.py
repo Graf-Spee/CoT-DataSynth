@@ -25,6 +25,7 @@ from DataObs.lib.data_process.cot_distill_teacher_filter import (  # noqa: E402
     LocalTeacher,
     _as_messages,
     _get_ground_truth,
+    _format_student_question,
     _last_user_text,
     _load_reward_functions,
     _normalize_dataset_name,
@@ -37,18 +38,36 @@ try:  # noqa: E402
         consistency_check_prompt_mcq,
         gen_reasoning_prompt,
         icl_samples,
+        icl_samples_yesno,
         prompt_for_backward_question,
+        prompt_for_backward_question_math,
+        prompt_for_backward_question_mcq,
+        prompt_for_backward_question_yesno,
     )
-    from .heuristic_text_utils import get_true_false, remove_backward_answer
+    from .heuristic_text_utils import (
+        clean_generated_question,
+        get_true_false,
+        remove_backward_answer,
+        remove_backward_answer_annotation,
+    )
 except ImportError:  # direct script execution
     from heuristic_prompts import (
         consistency_check_prompt_math,
         consistency_check_prompt_mcq,
         gen_reasoning_prompt,
         icl_samples,
+        icl_samples_yesno,
         prompt_for_backward_question,
+        prompt_for_backward_question_math,
+        prompt_for_backward_question_mcq,
+        prompt_for_backward_question_yesno,
     )
-    from heuristic_text_utils import get_true_false, remove_backward_answer
+    from heuristic_text_utils import (
+        clean_generated_question,
+        get_true_false,
+        remove_backward_answer,
+        remove_backward_answer_annotation,
+    )
 
 __all__ = [
     "DATASET_GROUP",
@@ -58,9 +77,12 @@ __all__ = [
     "base_summary",
     "baseline_task",
     "batched_generate",
+    "backward_prompt_family",
     "build_answer_aug_prompt",
+    "build_backward_question_prompt",
     "build_reasoning_prompt",
     "build_rephrase_prompt",
+    "clean_backward_question",
     "clean_rephrase",
     "consistency_check_prompt_math",
     "consistency_check_prompt_mcq",
@@ -68,13 +90,17 @@ __all__ = [
     "dataset_group",
     "extract_reward_prediction",
     "flatten",
+    "format_gold_answer_for_prompt",
+    "format_student_question",
     "get_true_false",
     "icl_samples",
     "load_input_rows",
     "make_teacher",
     "normalize_dataset",
+    "original_metamath_prompt_status",
     "prompt_for_backward_question",
     "remove_backward_answer",
+    "remove_backward_answer_annotation",
     "require_backward_task",
     "score_answer",
     "validate_common_args",
@@ -92,6 +118,16 @@ DATASET_TO_BASELINE_TASK = {
     "strategyqa": "SQA",
 }
 REVERSE_THINKING_DATASETS = tuple(DATASET_TO_BASELINE_TASK.keys())
+BACKWARD_PROMPT_FAMILIES = {
+    "arc-challenge": "mcq",
+    "commonsenseqa": "mcq",
+    "gsm8k": "math",
+    "math": "math",
+    "math-500": "math",
+    "strategyqa": "yesno",
+}
+ORIGINAL_METAMATH_NATIVE_DATASETS = {"gsm8k"}
+ORIGINAL_METAMATH_BORROWED_DATASETS = {"math", "math-500", "numinamath"}
 
 
 def normalize_dataset(name: str) -> str:
@@ -109,8 +145,14 @@ def dataset_group(dataset: str) -> str:
     return DATASET_GROUP[dataset]
 
 
+def format_student_question(dataset: str, question: str) -> str:
+    """Format SFT-facing question text with dataset-specific answer-type cues."""
+    return _format_student_question(dataset, question)
+
+
 def build_reasoning_prompt(dataset: str, question: str) -> str:
     """Build the teacher CoT prompt for a question. Prefer original baseline prompts when available."""
+    question = format_student_question(dataset, question)
     task = baseline_task(dataset)
     if task and task in gen_reasoning_prompt:
         return question.rstrip() + "\n" + gen_reasoning_prompt[task]
@@ -132,6 +174,12 @@ def require_backward_task(dataset: str) -> str:
     """Validate Reverse Thinking support and return the matching baseline ICL task name."""
     if DATASET_GROUP[dataset] == "code_tests":
         raise ValueError(f"Reverse Thinking is not supported for coding dataset {dataset!r}.")
+    if dataset not in BACKWARD_PROMPT_FAMILIES:
+        supported = ", ".join(REVERSE_THINKING_DATASETS)
+        raise ValueError(
+            f"Reverse Thinking needs backward-question ICL prompts and is not covered "
+            f"for dataset {dataset!r}. Supported datasets: {supported}."
+        )
     task = baseline_task(dataset)
     if not task or task not in icl_samples:
         supported = ", ".join(REVERSE_THINKING_DATASETS)
@@ -142,14 +190,64 @@ def require_backward_task(dataset: str) -> str:
     return task
 
 
+def backward_prompt_family(dataset: str) -> str:
+    """Return the backward-question prompt family for supported datasets."""
+    require_backward_task(dataset)
+    return BACKWARD_PROMPT_FAMILIES[dataset]
+
+
+def format_gold_answer_for_prompt(dataset: str, gold_answer: Any) -> str:
+    """Format gold labels for backward-question prompts."""
+    family = backward_prompt_family(dataset)
+    if family == "mcq":
+        label = str(gold_answer).strip().upper()
+        return f"({label})" if len(label) == 1 and label.isalpha() else label
+    if family == "yesno":
+        if isinstance(gold_answer, bool):
+            return "yes" if gold_answer else "no"
+        text = str(gold_answer).strip().lower()
+        if text in {"true", "1"}:
+            return "yes"
+        if text in {"false", "0"}:
+            return "no"
+        return text
+    return str(gold_answer).strip()
+
+
+def build_backward_question_prompt(dataset: str, question: str, gold_answer: Any) -> str:
+    """Build the dataset-family-specific inverse/backward-question prompt."""
+    task = require_backward_task(dataset)
+    family = BACKWARD_PROMPT_FAMILIES[dataset]
+    formatted_answer = format_gold_answer_for_prompt(dataset, gold_answer)
+    input_question = f"INPUT: {question} The correct answer is {formatted_answer}."
+    if family == "mcq":
+        template = prompt_for_backward_question_mcq
+        samples = icl_samples[task]
+    elif family == "math":
+        template = prompt_for_backward_question_math
+        samples = icl_samples[task]
+    elif family == "yesno":
+        template = prompt_for_backward_question_yesno
+        samples = icl_samples_yesno[task]
+    else:  # pragma: no cover - guarded by require_backward_task
+        raise ValueError(f"Unsupported backward-question prompt family: {family}")
+    return template.format(icl_samples=samples, input_question=input_question)
+
+
+def clean_backward_question(text: str) -> str:
+    """Clean generated backward questions before reuse as SFT input or teacher input."""
+    return clean_generated_question(text)
+
+
 def clean_rephrase(text: str) -> str:
-    """Remove common model-introduced rephrase prefixes and surrounding quotes."""
+    """Extract a clean rephrased question from model output."""
+    text = clean_generated_question(text)
     prefix = re.compile(
         r"^\s*(?:Rephrase[sd]?|Rephrased)(?:\s+the)?\s+(?:above\s+)?question[:\-\s]*",
         re.IGNORECASE,
     )
     text = prefix.sub("", text).lstrip("-: ").strip()
-    if len(text) > 1 and text[0] in "\"'" and text[-1] in "\"'":
+    if len(text) > 1 and text[0] in "\"'“‘" and text[-1] in "\"'”’":
         text = text[1:-1]
     return text.strip()
 
@@ -177,8 +275,24 @@ A: Let's think step by step. Half of 16 is 8. Half of 8 is 4. The answer is: 4
 def build_answer_aug_prompt(dataset: str, question: str, use_original_prompt: bool) -> str:
     """Build the prompt for sampling alternate reasoning paths for the same question."""
     if use_original_prompt:
+        status = original_metamath_prompt_status(dataset)
+        if status == "unsupported":
+            raise ValueError(
+                "--use-original-metamath-prompt only applies to GSM8K/math-style datasets; "
+                f"dataset {dataset!r} should use DataObs dataset-specific prompts."
+            )
         return f"{ANSWER_AUG_HEADER}\n\nQ: {question}\nA: Let's think step by step."
     return build_reasoning_prompt(dataset, question)
+
+
+def original_metamath_prompt_status(dataset: str) -> str:
+    """Return native/borrowed/unsupported status for the original MetaMath answer prompt."""
+    dataset = normalize_dataset(dataset)
+    if dataset in ORIGINAL_METAMATH_NATIVE_DATASETS:
+        return "native"
+    if dataset in ORIGINAL_METAMATH_BORROWED_DATASETS:
+        return "borrowed"
+    return "unsupported"
 
 
 def score_answer(dataset: str, answer: str, gold_answer: Any) -> float:
@@ -209,7 +323,10 @@ def load_input_rows(input_file: str, dataset: str, smoke_num_rows: int = 0) -> L
     rows = []
     for idx, row in df.iterrows():
         messages = _as_messages(row["prompt"])
-        question = _last_user_text(messages).strip()
+        prompt_question = _last_user_text(messages).strip()
+        raw_question_value = row.get("raw_question", prompt_question)
+        raw_question = str(_to_builtin(raw_question_value)).strip()
+        question = format_student_question(dataset, prompt_question)
         gold = _get_ground_truth(row["reward_model"])
         if gold is None:
             raise ValueError(f"Missing gold answer at row index {idx}.")
@@ -220,6 +337,7 @@ def load_input_rows(input_file: str, dataset: str, smoke_num_rows: int = 0) -> L
                 "dataset": dataset,
                 "data_source": row.get("data_source", dataset),
                 "question": question,
+                "raw_question": raw_question,
                 "gold_answer": _to_builtin(gold),
             }
         )
@@ -367,6 +485,11 @@ def base_summary(
             "gen_batch_size": args.gen_batch_size,
             "tensor_parallel_size": args.tensor_parallel_size,
             "gpu_ids": args.gpu_ids,
+            "dtype": args.dtype,
+        },
+        "prompt_policy": {
+            "student_input": "raw_question_plus_yesno" if args.dataset == "strategyqa" else "raw_question",
+            "sft_answer_cleaning": "method_specific",
         },
         "elapsed_sec": time.time() - start_time,
     }

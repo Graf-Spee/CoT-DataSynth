@@ -24,6 +24,7 @@ import argparse
 import math
 import json
 import os
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -72,7 +73,7 @@ REASONING_SUFFIX = {
         'then end with exactly this format: "The answer is (X)" where X is the correct option label.'
     ),
     "gsm8k": (
-        'Additional distillation instruction: provide step-by-step reasoning and end with "#### <number>".'
+        r"Additional distillation instruction: provide step-by-step reasoning and put the final answer in \boxed{}."
     ),
     "math": (
         r"Additional distillation instruction: provide step-by-step reasoning and put the final answer in \boxed{}."
@@ -183,19 +184,48 @@ def _last_user_text(messages: List[Dict[str, str]]) -> str:
     return messages[-1].get("content", "") if messages else ""
 
 
+def _format_student_question(dataset: str, question: str) -> str:
+    """Format the SFT/eval-facing question text for datasets that need an answer-type cue."""
+    canonical = _normalize_dataset_name(dataset)
+    question = str(question).strip()
+    if canonical == "strategyqa" and not re.search(r"\byes\s+or\s+no\s*:", question, re.IGNORECASE):
+        return f"Yes or no: {question}"
+    return question
+
+
+def _prompt_policy(dataset: str) -> Dict[str, str]:
+    canonical = _normalize_dataset_name(dataset)
+    group = DATASET_GROUP[canonical]
+    student_question = "raw_question_plus_yesno" if canonical == "strategyqa" else "raw_question"
+    final_answer_format = {
+        "multiple_choice": "The answer is (X)",
+        "gsm8k": r"\boxed{}",
+        "math": r"\boxed{}",
+        "truefalse": "So the answer is yes/no",
+        "code_tests": "last python markdown code block",
+    }[group]
+    return {
+        "student_question": student_question,
+        "teacher_reasoning_prompt": "DataObs reasoning suffix",
+        "sft_answer_cleaning": "none",
+        "score_input": "full_teacher_output_via_dataset_reward_extractor",
+        "final_answer_format": final_answer_format,
+    }
+
+
 def _append_reasoning_suffix(prompt: Any, dataset: str) -> tuple[str, List[Dict[str, str]]]:
     canonical = _normalize_dataset_name(dataset)
     group = DATASET_GROUP[canonical]
     suffix = REASONING_SUFFIX.get(group, "").strip()
     messages = _as_messages(prompt)
-    question = _last_user_text(messages).strip()
+    question = _format_student_question(canonical, _last_user_text(messages))
     if not suffix or not question:
         raise ValueError(f"Unsupported dataset: {dataset}")
 
     out = [dict(message) for message in messages]
     for idx in range(len(out) - 1, -1, -1):
         if out[idx].get("role") == "user":
-            out[idx]["content"] = out[idx].get("content", "").rstrip() + "\n\n" + suffix
+            out[idx]["content"] = question.rstrip() + "\n\n" + suffix
             break
     else:
         out.append({"role": "user", "content": suffix})
@@ -275,6 +305,7 @@ def _summarize_distill(
             "gen_batch_size": int(args.gen_batch_size),
             "tensor_parallel_size": int(args.tensor_parallel_size),
             "gpu_ids": args.gpu_ids,
+            "dtype": args.dtype,
         },
         "score": {
             "mean": _safe_mean(scores),
@@ -295,6 +326,7 @@ def _summarize_distill(
         else 0.0,
         "elapsed_sec": float(elapsed_sec),
         "supported_datasets": list(SUPPORTED_DATASETS),
+        "prompt_policy": _prompt_policy(dataset),
     }
 
 

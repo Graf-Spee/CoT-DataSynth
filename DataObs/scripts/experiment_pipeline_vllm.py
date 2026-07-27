@@ -48,9 +48,11 @@ if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
 from experiment_pipeline import (  # noqa: E402
+    DISTILL_METHODS,
     Pipeline,
     REPO_ROOT,
     check_input,
+    normalize_distill_args,
     parse_env_pairs,
     resolve_sft_checkpoint,
 )
@@ -236,6 +238,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-name", default="")
 
     # Distillation
+    parser.add_argument("--distill-method", default="teacher_correctness_filter", choices=DISTILL_METHODS)
     parser.add_argument("--distill-dataset", default="")
     parser.add_argument("--distill-input", default="")
     parser.add_argument("--distill-output", default="")
@@ -248,9 +251,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--teacher-max-new-tokens", type=int, default=8192)
     parser.add_argument("--teacher-tensor-parallel-size", type=int, default=1)
     parser.add_argument("--teacher-gpu-memory-utilization", type=float, default=0.95)
+    parser.add_argument(
+        "--teacher-dtype",
+        default="auto",
+        choices=["auto", "float16", "bfloat16", "float32"],
+    )
     parser.add_argument("--teacher-correct-threshold", type=float, default=0.99)
     parser.add_argument("--teacher-do-sample", action="store_true")
+    parser.add_argument("--trust-remote-code", action="store_true")
     parser.add_argument("--disable-teacher-filter", action="store_true")
+    parser.add_argument("--answer-aug-use-original-metamath-prompt", action="store_true")
+    parser.add_argument("--rephrase-num-cots", type=int, default=1)
+    parser.add_argument("--rephrase-max-new-tokens", type=int, default=512)
+    parser.add_argument("--backward-question-max-new-tokens", type=int, default=1024)
+    parser.add_argument("--consistency-max-new-tokens", type=int, default=1024)
     parser.add_argument("--smoke-num-rows", type=int, default=0)
 
     # Metrics
@@ -309,9 +323,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--grpo-env", action="append", default=[])
 
     args = parser.parse_args()
-    if args.teacher_num_samples > 1 and not args.teacher_do_sample:
-        args.teacher_do_sample = True
-    return args
+    return normalize_distill_args(args)
 
 
 if __name__ == "__main__":

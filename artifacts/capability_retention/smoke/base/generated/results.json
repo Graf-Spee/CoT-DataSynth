@@ -1,0 +1,26 @@
+{
+  "dataset": "ifeval",
+  "model_path": "/data/pretrain_models/Qwen3-4B",
+  "num_samples": 10,
+  "accuracy": 0.8,
+  "num_correct": 8,
+  "elapsed_sec": 5.874372243881226,
+  "opencompass_metrics": {
+    "Prompt-level-strict-accuracy": 80.0,
+    "Inst-level-strict-accuracy": 88.88888888888889,
+    "Prompt-level-loose-accuracy": 80.0,
+    "Inst-level-loose-accuracy": 88.88888888888889
+  },
+  "config": {
+    "num_samples_per_prompt": 1,
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "top_k": -1,
+    "max_response_len": 4096,
+    "batch_size": 8,
+    "enable_thinking": false,
+    "score_without_reasoning": true,
+    "metric_primary": "Prompt-level-strict-accuracy",
+    "alignment": "OpenCompass IFEvaluator"
+  }
+}

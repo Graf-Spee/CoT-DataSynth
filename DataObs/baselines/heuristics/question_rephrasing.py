@@ -16,6 +16,7 @@ try:
         build_reasoning_prompt,
         build_rephrase_prompt,
         clean_rephrase,
+        format_student_question,
         load_input_rows,
         make_teacher,
         score_answer,
@@ -30,6 +31,7 @@ except ImportError:  # direct script execution
         build_reasoning_prompt,
         build_rephrase_prompt,
         clean_rephrase,
+        format_student_question,
         load_input_rows,
         make_teacher,
         score_answer,
@@ -45,7 +47,7 @@ def run(args: argparse.Namespace) -> None:
     teacher = make_teacher(args)
 
     # Stage 1: generate semantically equivalent rephrased questions.
-    rephrase_prompts = [build_rephrase_prompt(row["question"]) for row in rows]
+    rephrase_prompts = [build_rephrase_prompt(row.get("raw_question", row["question"])) for row in rows]
     rephrase_outputs = batched_generate(
         teacher,
         rephrase_prompts,
@@ -61,13 +63,15 @@ def run(args: argparse.Namespace) -> None:
     rephrased_items: List[Dict[str, Any]] = []
     for row, generations in zip(rows, rephrase_outputs):
         for rephrase_index, raw_rephrase in enumerate(generations):
-            question = clean_rephrase(raw_rephrase)
-            if not question:
+            clean_question = clean_rephrase(raw_rephrase)
+            if not clean_question:
                 continue
+            student_question = format_student_question(args.dataset, clean_question)
             rephrased_items.append(
                 {
                     **row,
-                    "augmented_question": question,
+                    "augmented_question": student_question,
+                    "clean_rephrased_question": clean_question,
                     "rephrase_index": rephrase_index,
                     "raw_rephrase": raw_rephrase,
                 }
@@ -105,7 +109,9 @@ def run(args: argparse.Namespace) -> None:
                 "rephrase_index": item["rephrase_index"],
                 "sample_index": sample_index,
                 "original_question": item["question"],
+                "raw_original_question": item.get("raw_question", item["question"]),
                 "raw_rephrase": item["raw_rephrase"],
+                "clean_rephrased_question": item["clean_rephrased_question"],
                 "teacher_score": float(score),
                 "teacher_filter_passed": bool(passed),
                 "answer_char_len": len(str(answer)),
@@ -124,6 +130,9 @@ def run(args: argparse.Namespace) -> None:
                         "teacher_score": float(score),
                         "teacher_filter_passed": bool(passed),
                         "original_question": item["question"],
+                        "raw_original_question": item.get("raw_question", item["question"]),
+                        "raw_rephrase": item["raw_rephrase"],
+                        "clean_rephrased_question": item["clean_rephrased_question"],
                         "rephrase_index": item["rephrase_index"],
                         "sample_index": sample_index,
                     }
@@ -140,6 +149,13 @@ def run(args: argparse.Namespace) -> None:
     summary["num_rephrases_per_row"] = args.num_rephrases
     summary["num_cots_per_rephrase"] = args.num_cots
     summary["num_nonempty_rephrases"] = len(rephrased_items)
+    summary["prompt_policy"] = {
+        "rephrase_prompt": "MetaMath_style_rephrase_prompt",
+        "answer_prompt": "dataset_specific_reasoning_prompt",
+        "student_input": "clean_rephrased_question",
+        "sft_answer_cleaning": "none",
+        "raw_rephrase_retained": True,
+    }
     write_outputs(output_file=args.output_file, output_rows=output_rows, candidate_rows=candidate_rows, summary=summary)
 
     del teacher

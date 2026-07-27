@@ -30,6 +30,36 @@ prompt_for_backward_question = """<INSTRUCTIONS>Your task is to generate an inve
 {input_question}
 """
 
+prompt_for_backward_question_mcq = prompt_for_backward_question
+
+prompt_for_backward_question_math = """<INSTRUCTIONS>Your task is to generate an inverse question, based on the input question and its correct answer. Follow these rules:
+1. Use the correct answer and quantities from the input question to create a new, related but inverse question.
+2. Ensure that the new answer is inversely correlated with the input question's answer, and the question is an open-ended math question.
+3. Make sure the answer of your generated question is correct and reasonable.
+4. The correct answer in your generated question must be present in the input question.
+5. The generated question should be semantically different from the input question.
+</INSTRUCTIONS>
+
+<EXAMPLE>
+{icl_samples}
+</EXAMPLE>
+{input_question}
+"""
+
+prompt_for_backward_question_yesno = """<INSTRUCTIONS>Your task is to generate one inverse yes/no question based on the input question and its correct answer. Follow these rules:
+1. Use the correct answer from the input question to create a new, related but inverse question.
+2. Ensure that the new answer is inversely correlated with the input question's answer, and is either yes or no.
+3. Make sure the answer of your generated question is correct and reasonable.
+4. The correct answer in your generated question must be present in the input question.
+5. The generated question should be semantically different from the input question.
+</INSTRUCTIONS>
+
+<EXAMPLE>
+{icl_samples}
+</EXAMPLE>
+{input_question}
+"""
+
 # icl samples to generate backward question for each dataset
 icl_samples = {
     "SQA": """INPUT: Is shrimp scampi definitely free of plastic? The correct answer is no.
@@ -91,6 +121,21 @@ OUTPUT: Twenty-seven increased by 6 * 2 is a number. What is the number?
 
 INPUT: In a particular right triangle, the two legs have lengths of 40 inches and 42 inches. What is the area of the triangle? The correct answer is 840.
 OUTPUT: In a particular right triangle, the two legs have lengths of 40 inches and X inches. The area of the triangle is 840. What is the value of unknown variable X?
+"""
+}
+
+icl_samples_yesno = {
+    "SQA": """INPUT: Is shrimp scampi definitely free of plastic? The correct answer is no.
+OUTPUT: If shrimp scampi is not definitely free of plastic, can shrimp scampi possibly contain plastic? The correct answer is yes.
+
+INPUT: Would a retail associate envy the retailer's CEO's pay? The correct answer is yes.
+OUTPUT: If a retail associate envies the retailer's CEO's pay, is the CEO's pay higher than the associate's pay? The correct answer is yes.
+
+INPUT: Should you be skeptical of a 21 year old claiming to have a doctorate? The correct answer is yes.
+OUTPUT: If you should be skeptical of a 21 year old claiming to have a doctorate, is the average doctorate recipient older than 21? The correct answer is yes.
+
+INPUT: Would a vegan eat a traditional Paella dish? The correct answer is no.
+OUTPUT: If a vegan would not eat a traditional Paella dish, does traditional Paella contain animals or animal-derived products? The correct answer is yes.
 """
 }
 

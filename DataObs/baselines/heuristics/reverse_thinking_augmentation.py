@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import gc
-import re
 import time
 from typing import Any, Dict, List
 
@@ -14,15 +13,17 @@ try:
         add_common_args,
         base_summary,
         batched_generate,
+        backward_prompt_family,
+        build_backward_question_prompt,
         build_reasoning_prompt,
+        clean_backward_question,
         consistency_prompt_template,
         extract_reward_prediction,
+        format_gold_answer_for_prompt,
         get_true_false,
-        icl_samples,
         load_input_rows,
         make_teacher,
-        prompt_for_backward_question,
-        remove_backward_answer,
+        remove_backward_answer_annotation,
         require_backward_task,
         score_answer,
         validate_common_args,
@@ -33,15 +34,17 @@ except ImportError:  # direct script execution
         add_common_args,
         base_summary,
         batched_generate,
+        backward_prompt_family,
+        build_backward_question_prompt,
         build_reasoning_prompt,
+        clean_backward_question,
         consistency_prompt_template,
         extract_reward_prediction,
+        format_gold_answer_for_prompt,
         get_true_false,
-        icl_samples,
         load_input_rows,
         make_teacher,
-        prompt_for_backward_question,
-        remove_backward_answer,
+        remove_backward_answer_annotation,
         require_backward_task,
         score_answer,
         validate_common_args,
@@ -49,17 +52,13 @@ except ImportError:  # direct script execution
     )
 
 
-def _strip_output_prefix(text: str) -> str:
-    """Remove an optional OUTPUT: prefix from generated backward questions."""
-    match = re.search(r"OUTPUT:\s*(.*)", text, re.DOTALL | re.IGNORECASE)
-    return match.group(1).strip() if match else text.strip()
-
-
-def _bq_training_question(question: str, gold_answer: Any) -> str:
+def _bq_training_question(dataset: str, question: str, gold_answer: Any) -> str:
     """Format the backward-question generation task as a training row prompt."""
+    formatted_answer = format_gold_answer_for_prompt(dataset, gold_answer)
     return (
         "Generate the inverse question based on the following seed question and its answer:\n"
-        f"### Seed Question: {question} The correct answer is ({gold_answer})."
+        f"### Seed Question: {question}\n"
+        f"### Seed Answer: {formatted_answer}"
     )
 
 
@@ -77,19 +76,37 @@ def _consistency_gold_answer(dataset: str, gold_answer: Any) -> Any:
     return gold_answer
 
 
+def _format_consistency_prompt(
+    template: str,
+    *,
+    question: str,
+    gold_answer: Any,
+    backward_question: str,
+    backward_pred: str,
+) -> str:
+    """Fill placeholders without interpreting LaTeX braces in prompt examples."""
+    prompt = template
+    for placeholder, value in {
+        "{question}": question,
+        "{gold_answer}": gold_answer,
+        "{backward_question}": backward_question,
+        "{backward_pred}": backward_pred,
+    }.items():
+        prompt = prompt.replace(placeholder, str(value))
+    return prompt
+
+
 def run(args: argparse.Namespace) -> None:
     """Run RevThink-style backward question, reasoning, and consistency filtering."""
     start_time = time.time()
     rows = load_input_rows(args.input_file, args.dataset, args.smoke_num_rows)
-    task = require_backward_task(args.dataset)
+    require_backward_task(args.dataset)
+    prompt_family = backward_prompt_family(args.dataset)
     teacher = make_teacher(args)
 
     # Stage 1: generate inverse/backward questions from the original question and answer.
     backward_question_prompts = [
-        prompt_for_backward_question.format(
-            icl_samples=icl_samples[task],
-            input_question=f"INPUT: {row['question']} The correct answer is {row['gold_answer']}.",
-        )
+        build_backward_question_prompt(args.dataset, row["question"], row["gold_answer"])
         for row in rows
     ]
     raw_backward_questions = batched_generate(
@@ -107,7 +124,8 @@ def run(args: argparse.Namespace) -> None:
     for row, outputs in zip(rows, raw_backward_questions):
         raw = outputs[0] if outputs else ""
         row["raw_backward_question"] = raw
-        row["backward_question"] = remove_backward_answer(_strip_output_prefix(raw))
+        row["backward_question_sft_answer"] = remove_backward_answer_annotation(raw)
+        row["backward_question"] = clean_backward_question(raw)
 
     # Stage 2: generate forward reasoning for the original question and score it.
     forward_prompts = [build_reasoning_prompt(args.dataset, row["question"]) for row in rows]
@@ -129,8 +147,12 @@ def run(args: argparse.Namespace) -> None:
         row["forward_score"] = score_answer(args.dataset, forward_reasoning, row["gold_answer"])
         row["forward_filter_passed"] = row["forward_score"] >= args.correct_threshold
 
-    # Stage 3: generate reasoning for each backward question.
-    backward_reasoning_prompts = [build_reasoning_prompt(args.dataset, row["backward_question"]) for row in rows]
+    # Stage 3: generate reasoning for each clean backward question.
+    backward_reasoning_items = [row for row in rows if row["backward_question"]]
+    backward_reasoning_prompts = [
+        build_reasoning_prompt(args.dataset, row["backward_question"])
+        for row in backward_reasoning_items
+    ]
     backward_outputs = batched_generate(
         teacher,
         backward_reasoning_prompts,
@@ -143,21 +165,26 @@ def run(args: argparse.Namespace) -> None:
         desc="Backward reasoning stage",
     )
 
-    for row, outputs in zip(rows, backward_outputs):
+    for row in rows:
+        row["backward_reasoning"] = ""
+        row["backward_pred"] = ""
+    for row, outputs in zip(backward_reasoning_items, backward_outputs):
         backward_reasoning = outputs[0] if outputs else ""
         row["backward_reasoning"] = backward_reasoning
         row["backward_pred"] = extract_reward_prediction(args.dataset, backward_reasoning)
 
     # Stage 4: ask the teacher to judge original/backward consistency.
     consistency_template = consistency_prompt_template(args.dataset)
+    consistency_items = [row for row in rows if row["backward_question"] and row["backward_pred"]]
     consistency_prompts = [
-        consistency_template.format(
+        _format_consistency_prompt(
+            consistency_template,
             question=row["question"],
             gold_answer=_consistency_gold_answer(args.dataset, row["gold_answer"]),
             backward_question=row["backward_question"],
             backward_pred=row["backward_pred"],
         )
-        for row in rows
+        for row in consistency_items
     ]
     consistency_outputs = batched_generate(
         teacher,
@@ -173,9 +200,13 @@ def run(args: argparse.Namespace) -> None:
 
     candidate_rows: List[Dict[str, Any]] = []
     output_rows: List[Dict[str, Any]] = []
+    consistency_by_source = {
+        row["source_index"]: (outputs[0] if outputs else "")
+        for row, outputs in zip(consistency_items, consistency_outputs)
+    }
     # Stage 5: keep consistent quadruplets with correct forward reasoning.
-    for row, outputs in zip(rows, consistency_outputs):
-        consistency_reasoning = outputs[0] if outputs else ""
+    for row in rows:
+        consistency_reasoning = consistency_by_source.get(row["source_index"], "")
         is_consistent = get_true_false(consistency_reasoning) == "true"
         keep = (args.disable_teacher_filter or row["forward_filter_passed"]) and is_consistent
         candidate = {
@@ -187,9 +218,12 @@ def run(args: argparse.Namespace) -> None:
             "source_index": row["source_index"],
             "augmentation_method": "reverse_thinking",
             "backward_question": row["backward_question"],
+            "clean_backward_question": row["backward_question"],
             "raw_backward_question": row["raw_backward_question"],
+            "backward_question_sft_answer": row["backward_question_sft_answer"],
             "backward_reasoning": row["backward_reasoning"],
             "backward_pred": row["backward_pred"],
+            "backward_prompt_family": prompt_family,
             "consistency_reasoning": consistency_reasoning,
             "is_consistent": bool(is_consistent),
             "teacher_score": float(row["forward_score"]),
@@ -208,7 +242,12 @@ def run(args: argparse.Namespace) -> None:
                 "teacher_score": float(row["forward_score"]),
                 "teacher_filter_passed": True,
                 "original_question": row["question"],
+                "raw_original_question": row.get("raw_question", row["question"]),
                 "backward_question": row["backward_question"],
+                "clean_backward_question": row["backward_question"],
+                "raw_backward_question": row["raw_backward_question"],
+                "backward_question_sft_answer": row["backward_question_sft_answer"],
+                "backward_prompt_family": prompt_family,
             }
             output_rows.extend(
                 [
@@ -220,8 +259,8 @@ def run(args: argparse.Namespace) -> None:
                     },
                     {
                         **common,
-                        "question": _bq_training_question(row["question"], row["gold_answer"]),
-                        "answer": row["backward_question"],
+                        "question": _bq_training_question(args.dataset, row["question"], row["gold_answer"]),
+                        "answer": row["backward_question_sft_answer"],
                         "reverse_component": "backward_question",
                     },
                     {
@@ -245,6 +284,24 @@ def run(args: argparse.Namespace) -> None:
     summary["num_consistent_quadruplets"] = sum(1 for row in candidate_rows if row["is_consistent"])
     summary["num_forward_passed"] = sum(1 for row in candidate_rows if row["forward_filter_passed"])
     summary["output_rows_per_kept_quadruplet"] = 3
+    summary["kept_rate"] = (
+        len(output_rows) / summary["output_rows_per_kept_quadruplet"] / len(candidate_rows)
+        if candidate_rows
+        else 0.0
+    )
+    summary["prompt_policy"] = {
+        "backward_question_prompt_family": prompt_family,
+        "forward_reasoning_answer_cleaning": "none",
+        "backward_question_for_reasoning": "clean_backward_question",
+        "backward_reasoning_answer_cleaning": "none",
+        "student_rows": [
+            "original_question_to_forward_reasoning",
+            "backward_question_generation_task_to_raw_generation_without_answer_annotation",
+            "clean_backward_question_to_backward_reasoning",
+        ],
+        "backward_question_sft_answer_cleaning": "remove_backward_answer_annotation_only",
+        "raw_backward_question_retained": True,
+    }
     write_outputs(output_file=args.output_file, output_rows=output_rows, candidate_rows=candidate_rows, summary=summary)
 
     del teacher

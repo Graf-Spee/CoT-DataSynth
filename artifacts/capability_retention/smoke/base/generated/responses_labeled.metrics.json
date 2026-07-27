@@ -1,0 +1,10 @@
+{
+  "ifeval": {
+    "test_score": 0.8,
+    "accuracy": 80.0,
+    "Prompt-level-strict-accuracy": 80.0,
+    "Inst-level-strict-accuracy": 88.88888888888889,
+    "Prompt-level-loose-accuracy": 80.0,
+    "Inst-level-loose-accuracy": 88.88888888888889
+  }
+}

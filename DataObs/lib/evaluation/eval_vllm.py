@@ -37,6 +37,11 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 DATASET_CONFIG: dict[str, dict[str, Any]] = {
+    "aime25": {
+        "reward": "verl/utils/reward_score/math_verify.py",
+        "eval_data": "/data/open_datasets/AIME25/test.parquet",
+        "score_without_reasoning": True,
+    },
     "arc-challenge": {
         "reward": "verl/utils/reward_score/multiple_choice.py",
         "eval_data": "/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
@@ -53,6 +58,11 @@ DATASET_CONFIG: dict[str, dict[str, Any]] = {
         "reward": "verl/utils/reward_score/gsm8k.py",
         "eval_data": "/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
     },
+    "gpqa-diamond": {
+        "reward": "verl/utils/reward_score/multiple_choice.py",
+        "eval_data": "/data/open_datasets/GPQA-Diamond/test/gpqa_diamond.parquet",
+        "score_without_reasoning": True,
+    },
     "humaneval": {
         "reward": "verl/utils/reward_score/mbpp.py",
         "eval_data": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
@@ -60,6 +70,11 @@ DATASET_CONFIG: dict[str, dict[str, Any]] = {
     "humanevalplus": {
         "reward": "verl/utils/reward_score/mbpp.py",
         "eval_data": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+    },
+    "ifeval": {
+        "eval_data": "/data/open_datasets/IFEval/input_data.jsonl",
+        "is_ifeval": True,
+        "score_without_reasoning": True,
     },
     "math-500": {
         "reward": "verl/utils/reward_score/math_verify.py",
@@ -91,12 +106,19 @@ def _normalize_dataset(name: str) -> str:
         "arc": "arc-challenge",
         "arcchallenge": "arc-challenge",
         "ai2arc": "arc-challenge",
+        "aime25": "aime25",
+        "aime2025": "aime25",
         "aquarat": "aqua_rat",
         "commonsenseqa": "commonsenseQA",
         "csqa": "commonsenseQA",
         "gsm8k": "gsm8k",
+        "gpqa": "gpqa-diamond",
+        "gpqadiamond": "gpqa-diamond",
         "humaneval": "humaneval",
         "humanevalplus": "humanevalplus",
+        "ifeval": "ifeval",
+        "instructionfollowingeval": "ifeval",
+        "instructionfollowing": "ifeval",
         "livecodebench": "livecodebench",
         "lcb": "livecodebench",
         "math": "math",
@@ -239,6 +261,197 @@ def cleanup_vllm_engine(llm: Any) -> None:
         print(f"[WARN] CUDA cache cleanup failed: {exc}", flush=True)
 
 
+def _apply_user_chat_template(tokenizer: Any, prompt: str, enable_thinking: bool = False) -> str:
+    """Apply the model chat template to one user prompt."""
+    return tokenizer.apply_chat_template(
+        [{"role": "user", "content": prompt}],
+        tokenize=False,
+        add_generation_prompt=True,
+        enable_thinking=enable_thinking,
+    )
+
+
+def _strip_reasoning_content(text: str) -> str:
+    """Return the visible answer after a Qwen-style reasoning block."""
+    if "</think>" in text:
+        return text.rsplit("</think>", 1)[-1].strip()
+    return text
+
+
+def _score_text(dataset_cfg: dict[str, Any], response: str) -> str:
+    if dataset_cfg.get("score_without_reasoning"):
+        return _strip_reasoning_content(response)
+    return response
+
+
+def run_ifeval_vllm_eval(
+    *,
+    resolved_model: Path,
+    eval_data_path: Path,
+    out_dir: Path,
+    num_samples: int,
+    temperature: float,
+    top_p: float,
+    top_k: int,
+    max_response_len: int,
+    batch_size: int,
+    gpu_memory_utilization: float,
+    tensor_parallel_size: int,
+    max_samples: Optional[int],
+    seed: int,
+    enable_thinking: bool,
+) -> Dict[str, Any]:
+    """Run OpenCompass-aligned IFEval evaluation."""
+    from transformers import AutoTokenizer
+    from vllm import LLM, SamplingParams
+
+    eval_dir = Path(__file__).resolve().parent
+    if str(eval_dir) not in sys.path:
+        sys.path.insert(0, str(eval_dir))
+    from ifeval_opencompass import load_ifeval_references, score_ifeval_opencompass
+
+    references = load_ifeval_references(eval_data_path)
+    if max_samples is not None and max_samples > 0:
+        references = references[:max_samples]
+    origin_prompts = [str(ref["prompt"]) for ref in references]
+
+    tokenizer = AutoTokenizer.from_pretrained(str(resolved_model), trust_remote_code=True)
+    prompts = [
+        _apply_user_chat_template(tokenizer, prompt, enable_thinking=enable_thinking)
+        for prompt in origin_prompts
+    ]
+    print(f"[INFO] Loaded {len(prompts)} IFEval prompts from {eval_data_path}")
+
+    print(f"[INFO] Loading model with vLLM (tp={tensor_parallel_size}, gpu_mem={gpu_memory_utilization})...")
+    llm = LLM(
+        model=str(resolved_model),
+        tensor_parallel_size=tensor_parallel_size,
+        gpu_memory_utilization=gpu_memory_utilization,
+        trust_remote_code=True,
+    )
+
+    sampling_params = SamplingParams(
+        n=num_samples,
+        temperature=temperature,
+        top_p=top_p,
+        top_k=top_k,
+        max_tokens=max_response_len,
+        seed=seed,
+    )
+
+    print(f"[INFO] Generating IFEval responses (n={num_samples}, temp={temperature}, max_tokens={max_response_len})...")
+    start = time.time()
+    outputs = llm.generate(prompts, sampling_params)
+    elapsed = time.time() - start
+    print(f"[INFO] Generation done in {elapsed:.1f}s ({len(prompts)} prompts, {len(prompts) / elapsed:.1f} prompts/s)")
+
+    all_responses = [[o.text for o in output.outputs] for output in outputs]
+    first_responses = [responses[0] if responses else "" for responses in all_responses]
+    scored_responses = [_strip_reasoning_content(response) for response in first_responses]
+    metrics = score_ifeval_opencompass(scored_responses, references, origin_prompt=origin_prompts)
+
+    prompt_strict_percent = float(metrics["Prompt-level-strict-accuracy"])
+    prompt_strict_accuracy = prompt_strict_percent / 100.0
+    prompt_strict_correct = int(round(prompt_strict_accuracy * len(references)))
+
+    generated_dir = out_dir / "generated"
+    generated_dir.mkdir(parents=True, exist_ok=True)
+
+    results_df = pd.DataFrame(
+        {
+            "prompt": origin_prompts,
+            "formatted_prompt": prompts,
+            "reference": references,
+            "responses": all_responses,
+            "scored_responses": scored_responses,
+            "score": [
+                1.0 if metrics["details"][str(i)]["is_strict_correct"] else 0.0
+                for i in range(len(references))
+            ],
+        }
+    )
+    responses_path = generated_dir / "responses.parquet"
+    results_df.to_parquet(responses_path, index=False)
+
+    details = metrics["details"]
+    metrics_without_details = {k: v for k, v in metrics.items() if k != "details"}
+    results_json = {
+        "dataset": "ifeval",
+        "model_path": str(resolved_model),
+        "num_samples": len(prompts),
+        "accuracy": prompt_strict_accuracy,
+        "num_correct": prompt_strict_correct,
+        "elapsed_sec": elapsed,
+        "opencompass_metrics": metrics_without_details,
+        "config": {
+            "num_samples_per_prompt": num_samples,
+            "temperature": temperature,
+            "top_p": top_p,
+            "top_k": top_k,
+            "max_response_len": max_response_len,
+            "batch_size": batch_size,
+            "enable_thinking": enable_thinking,
+            "score_without_reasoning": True,
+            "metric_primary": "Prompt-level-strict-accuracy",
+            "alignment": "OpenCompass IFEvaluator",
+        },
+    }
+    results_json_path = generated_dir / "results.json"
+    with open(results_json_path, "w", encoding="utf-8") as f:
+        json.dump(results_json, f, indent=2, ensure_ascii=False)
+
+    metrics_json = {
+        "ifeval": {
+            "test_score": prompt_strict_accuracy,
+            "accuracy": prompt_strict_percent,
+            **metrics_without_details,
+        }
+    }
+    metrics_json_path = generated_dir / "responses_labeled.metrics.json"
+    with open(metrics_json_path, "w", encoding="utf-8") as f:
+        json.dump(metrics_json, f, indent=2, ensure_ascii=False)
+
+    labeled = [
+        {
+            "prompt": origin_prompts[i],
+            "response": first_responses[i],
+            "scored_response": scored_responses[i],
+            "score": float(details[str(i)]["is_strict_correct"]),
+            "is_strict_correct": details[str(i)]["is_strict_correct"],
+            "is_loose_correct": details[str(i)]["is_loose_correct"],
+            "grade": details[str(i)]["grade"],
+            "strict_follow_instruction_list": details[str(i)]["strict_follow_instruction_list"],
+            "loose_follow_instruction_list": details[str(i)]["loose_follow_instruction_list"],
+            "reference": references[i],
+        }
+        for i in range(len(references))
+    ]
+    labeled_path = generated_dir / "responses_labeled.json"
+    with open(labeled_path, "w", encoding="utf-8") as f:
+        json.dump(labeled, f, indent=2, ensure_ascii=False)
+
+    logs_dir = out_dir / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    eval_log = logs_dir / "evaluation.log"
+    with open(eval_log, "w", encoding="utf-8") as f:
+        f.write(f"accuracy: {prompt_strict_accuracy}\n")
+        f.write(f"__DATAOBS_ACCURACY__={prompt_strict_accuracy}\n")
+        for name, value in metrics_without_details.items():
+            f.write(f"{name}: {value}\n")
+        f.write("\n")
+        json.dump(results_json, f, indent=2, ensure_ascii=False)
+
+    print("[INFO] IFEval OpenCompass metrics:")
+    for name, value in metrics_without_details.items():
+        print(f"[INFO]   {name}: {value:.4f}")
+    print(f"[INFO] Results saved to {out_dir}")
+
+    cleanup_vllm_engine(llm)
+    del llm
+
+    return results_json
+
+
 def run_vllm_eval(
     model_path: str,
     base_model: str,
@@ -276,6 +489,25 @@ def run_vllm_eval(
         raise FileNotFoundError(f"Model path not found: {checkpoint}")
     resolved_model = resolve_model_path(checkpoint, base_model, out_dir)
     print(f"[INFO] Model path: {resolved_model}")
+
+    if ds_cfg.get("is_ifeval"):
+        eval_data_path = Path(eval_data).resolve() if eval_data else Path(ds_cfg["eval_data"])
+        return run_ifeval_vllm_eval(
+            resolved_model=resolved_model,
+            eval_data_path=eval_data_path,
+            out_dir=out_dir,
+            num_samples=num_samples,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            max_response_len=max_response_len,
+            batch_size=batch_size,
+            gpu_memory_utilization=gpu_memory_utilization,
+            tensor_parallel_size=tensor_parallel_size,
+            max_samples=max_samples,
+            seed=seed,
+            enable_thinking=enable_thinking,
+        )
 
     # Prepare eval data
     eval_data_path = Path(eval_data).resolve() if eval_data else Path(ds_cfg["eval_data"])
@@ -343,13 +575,15 @@ def run_vllm_eval(
 
     # Extract responses and score
     all_responses = []
+    all_scored_responses = []
     all_scores = []
     for output in outputs:
         responses = [o.text for o in output.outputs]
         all_responses.append(responses)
 
         # Use first response for scoring
-        pred_text = responses[0]
+        pred_text = _score_text(ds_cfg, responses[0])
+        all_scored_responses.append(pred_text)
         ground_truth = df.iloc[len(all_scores)]["reward_model"]["ground_truth"]
         score = compute_score_fn(pred_text, ground_truth)
         all_scores.append(score)
@@ -360,6 +594,7 @@ def run_vllm_eval(
     # Save results
     results_df = df.copy()
     results_df["responses"] = all_responses
+    results_df["scored_responses"] = all_scored_responses
     results_df["score"] = all_scores
 
     generated_dir = out_dir / "generated"
@@ -382,6 +617,7 @@ def run_vllm_eval(
             "max_response_len": max_response_len,
             "batch_size": batch_size,
             "enable_thinking": enable_thinking,
+            "score_without_reasoning": bool(ds_cfg.get("score_without_reasoning")),
         },
     }
     results_json_path = generated_dir / "results.json"
@@ -410,7 +646,11 @@ def run_vllm_eval(
             labeled.append({
                 "prompt": prompts[i],
                 "response": o.text,
-                "score": float(compute_score_fn(o.text, df.iloc[i]["reward_model"]["ground_truth"])),
+                "scored_response": _score_text(ds_cfg, o.text),
+                "score": float(compute_score_fn(
+                    _score_text(ds_cfg, o.text),
+                    df.iloc[i]["reward_model"]["ground_truth"],
+                )),
             })
     labeled_path = generated_dir / "responses_labeled.json"
     with open(labeled_path, "w", encoding="utf-8") as f:
