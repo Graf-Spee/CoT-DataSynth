@@ -22,7 +22,23 @@ python DataObs/baselines/heuristics/<script>.py \
 
 Use `--smoke-num-rows N` for quick checks. If generating more than one sample per prompt, pass `--do-sample`.
 
-Pipelines that generate answers apply the corresponding `verl.utils.reward_score` reward through DataObs helpers. `question_augmentation.py` is different: it generates backward questions and only drops empty generations.
+When these scripts are launched through `DataObs/scripts/experiment_pipeline.py` or `experiment_pipeline_vllm.py`, `--teacher-max-new-tokens` is the default override for every distillation generation budget whose specific option is not set. Specific options still take precedence:
+
+- `--forward-reasoning-max-new-tokens`: teacher filter, answer augmentation, question-rephrasing answer/solve generation, and reverse-thinking forward reasoning.
+- `--backward-reasoning-max-new-tokens`: reverse-thinking backward reasoning.
+- `--rephrase-max-new-tokens`: question-rephrasing rewrite generation.
+- `--backward-question-max-new-tokens`: question augmentation and reverse-thinking backward-question generation.
+- `--consistency-max-new-tokens`: reverse-thinking consistency checks.
+
+Pipelines that generate answers apply the corresponding `verl.utils.reward_score` reward through DataObs helpers. `question_augmentation.py` is different: it generates backward questions and keeps only candidates whose cleaned backward question can be extracted.
+
+## Teacher Filter Toggle
+
+`--disable-teacher-filter` only disables reward-based teacher correctness filtering. It does not disable structural filters needed to build valid training rows.
+
+- `teacher_filter`, `answer_augmentation`, and `question_rephrasing`: reward scores are still computed and recorded in `teacher_score` / `teacher_filter_passed`, but all answer candidates that reached the reward stage are kept. For `question_rephrasing`, malformed or unextractable rephrases are still dropped before answer generation.
+- `reverse_thinking`: the forward-answer reward check is bypassed, but the backward-question extraction, backward-answer extraction, and consistency check still gate kept rows.
+- `question_augmentation`: the flag has no effect on kept rows because there is no answer correctness reward filter. Candidates are kept only when `clean_backward_question` is nonempty.
 
 ## Prompt Support Matrix
 
@@ -50,7 +66,7 @@ Legend:
 
 - `teacher_filter` and `answer_augmentation`: SFT answers are not cleaned, so Qwen `<think>` blocks are preserved as CoT training material.
 - `question_rephrasing`: the rephrase generation is cleaned before it is used as SFT input or fed back to the teacher. The raw rephrase is retained in metadata, but `question` is the clean rephrased question. Answer generations are not cleaned.
-- `question_augmentation`: the SFT input is the backward-question generation task. The SFT answer is the raw backward-question generation with only a trailing backward-answer annotation removed, so teacher `<think>` traces are preserved. Reusable `backward_question`/`clean_backward_question` is retained separately with thinking, parser labels, and answer annotations removed.
+- `question_augmentation`: the SFT input is the backward-question generation task. The SFT answer is the raw backward-question generation with only a trailing backward-answer annotation removed, so complete teacher `<think>` traces are preserved. A candidate is kept only when `clean_backward_question` is nonempty. Reusable `backward_question`/`clean_backward_question` is retained separately with thinking, parser labels, and answer annotations removed.
 - `reverse_thinking`: forward and backward reasoning answers are not cleaned. The backward-question generation SFT row follows `question_augmentation` and keeps the raw generation target with only trailing answer annotation removed. The backward question is cleaned before it is used for backward reasoning or student input.
 
 Student inputs should never contain `<think>`, generated reasoning, or unintended final-answer annotations. `<think>` is allowed only in SFT output fields for answer/reasoning generation tasks.
@@ -126,7 +142,7 @@ python DataObs/baselines/heuristics/reverse_thinking_augmentation.py \
 
 File: `question_augmentation.py`
 
-Implements the original reference code's practical Question Augmentation setting: instead of generating truly novel questions, it trains the backward-question generation task. For each seed `(question, gold_answer)`, the teacher generates an inverse/backward question using the RevThink backward-question prompt. The kept training row asks the student to generate the inverse question, with the generated backward question as the target answer.
+Implements the original reference code's practical Question Augmentation setting: instead of generating truly novel questions, it trains the backward-question generation task. For each seed `(question, gold_answer)`, the teacher generates an inverse/backward question using the RevThink backward-question prompt. The kept training row asks the student to generate the inverse question, with the generated backward question as the target answer. Candidates whose raw generation cannot be cleaned into a nonempty backward question are dropped.
 
 This covers the datasets that have backward-question ICL prompts in this directory: `arc-challenge`, `commonsenseqa`, `gsm8k`, `math`, `math-500`, and `strategyqa`.
 Coding datasets, `aqua_rat`, and `numinamath` are disabled for this method because the backward-question prompts do not cover them.

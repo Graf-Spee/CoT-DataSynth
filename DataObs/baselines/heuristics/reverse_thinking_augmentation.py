@@ -133,7 +133,7 @@ def run(args: argparse.Namespace) -> None:
         teacher,
         forward_prompts,
         n=1,
-        max_new_tokens=args.max_new_tokens,
+        max_new_tokens=args.forward_reasoning_max_new_tokens,
         do_sample=args.do_sample,
         temperature=args.temperature,
         top_p=args.top_p,
@@ -157,7 +157,7 @@ def run(args: argparse.Namespace) -> None:
         teacher,
         backward_reasoning_prompts,
         n=1,
-        max_new_tokens=args.max_new_tokens,
+        max_new_tokens=args.backward_reasoning_max_new_tokens,
         do_sample=args.do_sample,
         temperature=args.temperature,
         top_p=args.top_p,
@@ -284,6 +284,8 @@ def run(args: argparse.Namespace) -> None:
     summary["num_consistent_quadruplets"] = sum(1 for row in candidate_rows if row["is_consistent"])
     summary["num_forward_passed"] = sum(1 for row in candidate_rows if row["forward_filter_passed"])
     summary["output_rows_per_kept_quadruplet"] = 3
+    summary["forward_reasoning_max_new_tokens"] = args.forward_reasoning_max_new_tokens
+    summary["backward_reasoning_max_new_tokens"] = args.backward_reasoning_max_new_tokens
     summary["kept_rate"] = (
         len(output_rows) / summary["output_rows_per_kept_quadruplet"] / len(candidate_rows)
         if candidate_rows
@@ -312,9 +314,19 @@ def parse_args() -> argparse.Namespace:
     """Parse and validate CLI options for Reverse Thinking augmentation."""
     parser = argparse.ArgumentParser(description="Reverse Thinking data augmentation.")
     add_common_args(parser)
+    parser.add_argument("--forward-reasoning-max-new-tokens", type=int, default=None)
+    parser.add_argument("--backward-reasoning-max-new-tokens", type=int, default=None)
     parser.add_argument("--backward-question-max-new-tokens", type=int, default=1024)
     parser.add_argument("--consistency-max-new-tokens", type=int, default=1024)
     args = parser.parse_args()
+    if args.forward_reasoning_max_new_tokens is None:
+        args.forward_reasoning_max_new_tokens = args.max_new_tokens
+    if args.backward_reasoning_max_new_tokens is None:
+        args.backward_reasoning_max_new_tokens = args.max_new_tokens
+    if args.forward_reasoning_max_new_tokens < 1:
+        parser.error("--forward-reasoning-max-new-tokens must be >= 1.")
+    if args.backward_reasoning_max_new_tokens < 1:
+        parser.error("--backward-reasoning-max-new-tokens must be >= 1.")
     validate_common_args(parser, args, num_samples=1)
     return args
 

@@ -25,12 +25,13 @@ Heuristics: Data Augmentation 方法，参考 The Quest for Efficient Reasoning:
 
 注意一点：不开 do-sample 选项的话，vllm 会固定做 **确定性** 采样！temp 和 top p 参数就没用了！！
 
-使用的命令：（现在是 smoke 命令）
-- smoke 进度：
-    - [ ] question rephrasing
-    - [ ] answer aug
-    - [ ] question aug
-    - [ ] reverse thinking
+token 长度参数：pipeline 中 `--teacher-max-new-tokens` 是总覆盖默认值；如果没有显式设置 `--forward-reasoning-max-new-tokens`、`--backward-reasoning-max-new-tokens`、`--rephrase-max-new-tokens`、`--backward-question-max-new-tokens`、`--consistency-max-new-tokens`，这些分类 generation budget 会自动使用 `--teacher-max-new-tokens`。如果显式设置了分类参数，则分类参数优先。
+
+`--disable-teacher-filter` 只关闭 reward-based teacher correctness filter，不会关闭 rephrase/backward-question 清洗、reverse-thinking consistency 等结构性过滤；详细行为见 `DataObs/baselines/heuristics/README.md`。
+
+使用的命令：参见 `<repo/>DataObs/experiment_instruction/exp10000_baselines/commands.md`
+
+使用的 smoke 命令：（参见 `<repo>/scripts/run_filter_smoke_teacher_max_tokens_sweep.sh`）
  
 python DataObs/scripts/experiment_pipeline_vllm.py \
     --experiment-id test_smoke_gsm8k_question_rephrasing_qwen3_8b_n4 \
@@ -75,7 +76,6 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --teacher-max-new-tokens 1024 \
     --teacher-tensor-parallel-size 1 \
     --teacher-gpu-memory-utilization 0.65 \
-    --disable-teacher-filter \
     --answer-aug-use-original-metamath-prompt \
     --smoke-num-rows 5 \
     --sft-epochs 1 \
@@ -129,9 +129,7 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --teacher-tensor-parallel-size 1 \
     --teacher-gpu-memory-utilization 0.65 \
     --disable-teacher-filter \
-    --smoke-num-rows 5 \
-    --backward-question-max-new-tokens 1024 \
-    --consistency-max-new-tokens 1024 \
+    --smoke-num-rows 20 \
     --sft-epochs 1 \
     --sft-arg data.train_batch_size=1 \
     --sft-arg data.micro_batch_size_per_gpu=1 \

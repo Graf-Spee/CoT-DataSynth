@@ -82,7 +82,7 @@ def run(args: argparse.Namespace) -> None:
         for question_index, raw_generation in enumerate(generations):
             backward_question = clean_backward_question(raw_generation)
             sft_answer = remove_backward_answer_annotation(raw_generation)
-            passed = bool(sft_answer.strip())
+            passed = bool(backward_question.strip())
             candidate = {
                 "question": row["question"],
                 "answer": sft_answer,
@@ -133,17 +133,17 @@ def run(args: argparse.Namespace) -> None:
         start_time=start_time,
     )
     summary["num_backward_questions_per_row"] = args.num_backward_questions
-    summary["num_nonempty_backward_questions"] = sum(1 for row in candidate_rows if row["teacher_filter_passed"])
+    summary["num_nonempty_backward_questions"] = sum(1 for row in candidate_rows if row["answer"])
     summary["num_clean_backward_questions"] = sum(1 for row in candidate_rows if row["clean_backward_question"])
     summary["teacher_filter_applied"] = False
-    summary["filter_type"] = "nonempty_backward_question_generation"
+    summary["filter_type"] = "nonempty_clean_backward_question"
     summary["prompt_policy"] = {
         "backward_question_prompt_family": prompt_family,
         "student_input": "backward_question_generation_task",
         "sft_answer": "raw_backward_question_generation_without_answer_annotation",
         "raw_generation_retained": True,
         "clean_backward_question_retained_for_reuse": True,
-        "clean_backward_question_filters_sft_rows": False,
+        "clean_backward_question_filters_sft_rows": True,
         "sft_answer_cleaning": "remove_backward_answer_annotation_only",
     }
     write_outputs(output_file=args.output_file, output_rows=output_rows, candidate_rows=candidate_rows, summary=summary)

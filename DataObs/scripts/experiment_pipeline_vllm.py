@@ -262,9 +262,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--disable-teacher-filter", action="store_true")
     parser.add_argument("--answer-aug-use-original-metamath-prompt", action="store_true")
     parser.add_argument("--rephrase-num-cots", type=int, default=1)
-    parser.add_argument("--rephrase-max-new-tokens", type=int, default=512)
-    parser.add_argument("--backward-question-max-new-tokens", type=int, default=1024)
-    parser.add_argument("--consistency-max-new-tokens", type=int, default=1024)
+    parser.add_argument("--forward-reasoning-max-new-tokens", type=int, default=None)
+    parser.add_argument("--backward-reasoning-max-new-tokens", type=int, default=None)
+    parser.add_argument("--rephrase-max-new-tokens", type=int, default=None)
+    parser.add_argument("--backward-question-max-new-tokens", type=int, default=None)
+    parser.add_argument("--consistency-max-new-tokens", type=int, default=None)
     parser.add_argument("--smoke-num-rows", type=int, default=0)
 
     # Metrics

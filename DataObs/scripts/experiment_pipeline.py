@@ -515,24 +515,34 @@ class Pipeline:
             "teacher_num_samples": self.args.teacher_num_samples,
             "teacher_do_sample": bool(self.args.teacher_do_sample),
             "teacher_dtype": self.args.teacher_dtype,
+            "teacher_max_new_tokens": self.args.teacher_max_new_tokens,
         }
         if method == "teacher_correctness_filter":
             method_specific["num_cots"] = 1
+            method_specific["forward_reasoning_max_new_tokens"] = self.args.forward_reasoning_max_new_tokens
         elif method == "answer_augmentation":
             method_specific["num_augmented_answers"] = self.args.teacher_num_samples
+            method_specific["forward_reasoning_max_new_tokens"] = self.args.forward_reasoning_max_new_tokens
             method_specific["use_original_metamath_prompt"] = bool(self.args.answer_aug_use_original_metamath_prompt)
             method_specific["original_metamath_prompt_supported"] = self.answer_aug_original_prompt_supported()
             method_specific["original_metamath_prompt_status"] = self.answer_aug_original_prompt_status()
         elif method == "question_rephrasing":
             method_specific["num_rephrases"] = self.args.teacher_num_samples
             method_specific["num_cots_per_rephrase"] = self.args.rephrase_num_cots
+            method_specific["rephrase_max_new_tokens"] = self.args.rephrase_max_new_tokens
+            method_specific["forward_reasoning_max_new_tokens"] = self.args.forward_reasoning_max_new_tokens
         elif method == "question_augmentation":
             method_specific["num_backward_questions"] = self.args.teacher_num_samples
+            method_specific["backward_question_max_new_tokens"] = self.args.backward_question_max_new_tokens
         elif method == "reverse_thinking":
             method_specific["num_backward_questions"] = 1
             method_specific["num_forward_cots"] = 1
             method_specific["num_backward_cots"] = 1
             method_specific["num_consistency_checks"] = 1
+            method_specific["backward_question_max_new_tokens"] = self.args.backward_question_max_new_tokens
+            method_specific["forward_reasoning_max_new_tokens"] = self.args.forward_reasoning_max_new_tokens
+            method_specific["backward_reasoning_max_new_tokens"] = self.args.backward_reasoning_max_new_tokens
+            method_specific["consistency_max_new_tokens"] = self.args.consistency_max_new_tokens
         return {
             "method": method,
             "dataset": self.distill_dataset_key(),
@@ -665,7 +675,16 @@ class Pipeline:
             "--gen-batch-size",
             str(self.args.teacher_batch_size),
             "--max-new-tokens",
-            str(self.args.teacher_max_new_tokens),
+            str(
+                self.args.forward_reasoning_max_new_tokens
+                if distill_method in {
+                    "teacher_correctness_filter",
+                    "answer_augmentation",
+                    "question_rephrasing",
+                    "reverse_thinking",
+                }
+                else self.args.teacher_max_new_tokens
+            ),
             "--tensor-parallel-size",
             str(self.args.teacher_tensor_parallel_size),
             "--gpu-memory-utilization",
@@ -716,6 +735,8 @@ class Pipeline:
             cmd += [
                 "--backward-question-max-new-tokens",
                 str(self.args.backward_question_max_new_tokens),
+                "--backward-reasoning-max-new-tokens",
+                str(self.args.backward_reasoning_max_new_tokens),
                 "--consistency-max-new-tokens",
                 str(self.args.consistency_max_new_tokens),
             ]
@@ -933,9 +954,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--disable-teacher-filter", action="store_true")
     parser.add_argument("--answer-aug-use-original-metamath-prompt", action="store_true")
     parser.add_argument("--rephrase-num-cots", type=int, default=1)
-    parser.add_argument("--rephrase-max-new-tokens", type=int, default=512)
-    parser.add_argument("--backward-question-max-new-tokens", type=int, default=1024)
-    parser.add_argument("--consistency-max-new-tokens", type=int, default=1024)
+    parser.add_argument("--forward-reasoning-max-new-tokens", type=int, default=None)
+    parser.add_argument("--backward-reasoning-max-new-tokens", type=int, default=None)
+    parser.add_argument("--rephrase-max-new-tokens", type=int, default=None)
+    parser.add_argument("--backward-question-max-new-tokens", type=int, default=None)
+    parser.add_argument("--consistency-max-new-tokens", type=int, default=None)
     parser.add_argument("--smoke-num-rows", type=int, default=0)
 
     # Metrics.
@@ -981,6 +1004,19 @@ def parse_args() -> argparse.Namespace:
 
 
 def normalize_distill_args(args: argparse.Namespace) -> argparse.Namespace:
+    for attr in (
+        "forward_reasoning_max_new_tokens",
+        "backward_reasoning_max_new_tokens",
+        "rephrase_max_new_tokens",
+        "backward_question_max_new_tokens",
+        "consistency_max_new_tokens",
+    ):
+        value = getattr(args, attr, None)
+        if value is None:
+            setattr(args, attr, args.teacher_max_new_tokens)
+        elif value < 1:
+            raise SystemExit(f"[ERROR] --{attr.replace('_', '-')} must be >= 1.")
+
     if args.distill_method == "reverse_thinking" and args.teacher_num_samples > 1:
         raise SystemExit(
             "[ERROR] --distill-method reverse_thinking does not support "
