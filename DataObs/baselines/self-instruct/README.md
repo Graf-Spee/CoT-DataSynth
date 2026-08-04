@@ -406,13 +406,6 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
 - step 2 的 classification 判别模板
 - step 3 的 classification / generation instance 模板
 
-如果之后你要和师兄讨论：
-
-- prompt 有没有改动
-- 改动是否影响 baseline 公平性
-- 现在是不是还贴官方
-
-那第一眼就看这个文件。
 
 ### `bootstrap_instructions.py`
 
@@ -432,84 +425,6 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
   - `bootstrap_most_similar`
   - `bootstrap_error`
 
-这一步最近刚修过一个很关键的问题：
-
-- 现在 step 1 默认重新贴回了官方 stop 设定：
-  - `\n\n`
-  - `\n16`
-  - `16.`
-  - `16 .`
-- 之前担心 chat 模型会被 `\n\n` 提前截断
-- 但在给 Qwen 加了最小 chat wrapper 之后，`2026-07-31` 的 `gpu6 + Qwen3-4B` smoke 已经证明这组官方 stop 仍然可以正常产出真实 bootstrap instruction
-
-这一步最近又做了一层更关键的 Qwen 适配：
-
-- 不再机械地要求本地模型按 GPT completion 的外壳工作
-- 改成“官方 bootstrap 语义 + Qwen chat 模板最小包装”
-- 包装目标是强约束模型直接继续输出编号任务，而不是先说 `Sure! ...`
-
-当前最新 smoke 现象：
-
-- step 1 已经能真实生成 `4. ...` 风格的新 instruction
-- 并且这些 instruction 已经能被当前解析器正确提取
-- 说明 step 1 已经从“经常直接退回 stub”推进到了“可以真实 bootstrap”
-- 在 `2026-07-31` 重新贴近官方后处理和官方 stop 之后，`gpu6 + Qwen3-4B` 下仍然能真实 bootstrap
-- 说明把默认 `stub fallback` 关掉以后，这一步依然不是靠兜底假通
-- 在进一步收紧相似度过滤、后处理入口和 metadata 结构以后，`gpu6` smoke 仍然稳定产出真实 bootstrap instruction
-- `2026-07-31` 这次 step 1 真机 smoke 结果：
-  - `seed_tasks = 5`
-  - `bootstrapped = 3`
-  - 产出的记录里 `generation_method = self_instruct_bootstrap`
-  - `bootstrap_error` 为空
-  - 说明当前默认路径已经是真实 bootstrap，而不是 stub fallback
-
-当前限制：
-
-- 后端已经不是官方 repo 里的 OpenAI completion API，而是本地 vLLM
-- step 1 现在要求环境里必须有 `rouge_score`
-- 如果没有这个依赖，会直接报错并终止真实 bootstrap，不再走本地 fallback scorer
-- 现在 `stub fallback` 仍然保留，但已经改成显式开关：
-  - 只有传 `--bootstrap-allow-stub-fallback` 才会退回 seed task
-  - 默认行为更接近官方，即 bootstrap 失败就返回空结果，而不是假装成功
-- 现在还额外保留了本地生成元信息，例如 `bootstrap_finish_reason`
-- 并且已经直接按官方 `post_process_gpt3_response` 风格处理 `finish_reason == length`：这类结果默认不再当成有效候选
-
-按当前约定的标准，step 1 现在可以认为已经达到“官方等价迁移”：
-
-- few-shot 组织方式已经按官方主体逻辑走
-- stop sequences 已经按官方设定走
-- 相似度过滤已经直接按官方 `rougeL` 逻辑走
-- 候选解析入口已经改回官方的 `response -> post_process_gpt3_response` 形态
-- 默认不再带本地 stub fallback
-- 剩余保留差异只剩：
-  - `OpenAI completion -> 本地 Qwen + vLLM`
-  - completion prompt 外层加了最小 Qwen chat wrapper
-  - 输出字段要额外兼容 DataObs
-
-### step 1 差异审计
-
-如果严格按“除了本地模型适配和输出格式适配外，其他尽量贴官方”的标准看，step 1 现在的差异可以分成两类。
-
-必须保留的适配：
-
-- `OpenAI completion -> LocalTeacher / vLLM`
-- 为了让 Qwen chat model 更像官方 completion 行为，加了最小 chat wrapper
-- 输入不再是官方 repo 的 `seed_tasks.jsonl` 固定结构，而是要兼容 DataObs 预处理后的 parquet/jsonl
-- 输出除了最终 instruction 之外，还要写成 DataObs 能继续消费的字段结构
-
-目前还属于本地实现、后面仍可继续收的点：
-
-- 后端响应对象不是 OpenAI 原生返回，而是本地 vLLM 结果再包成官方近似结构
-- 为了兼容本地 reasoning/chat 模型，还额外去掉了 `<think>...</think>` 块
-- 还保留了显式调试开关：
-  - `--bootstrap-allow-stub-fallback`
-
-所以 step 1 当前更准确的说法是：
-
-- 主体逻辑已经按官方跑起来了
-- 必要适配也已经分清了
-- 现在它已经不是四步里最偏离官方的一步了
-- 如果后面继续收，优先级会更多落在 step 3 / step 4 的输出行为细节
 
 ### `identify_clf_or_not.py`
 
@@ -526,36 +441,6 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
   - `classification_detection_method`
   - `classification_detection_reason`
 
-当前状态：
-
-- prompt 已经尽量贴官方
-- 但后端还是本地 vLLM，不是原 repo 的 OpenAI 调用
-- 现在 `heuristic fallback` 仍然保留，但已经改成显式开关：
-  - 只有传 `--classification-allow-heuristic-fallback` 才会退回启发式判断
-  - 默认行为更接近官方，即模型输出不可解析时直接保留“官方模板未解析”的状态
-- 在 `2026-07-30` 的 `gpu6 + Qwen3-4B` smoke 中，至少测试到的数学 instruction 已经被正确判成 `No`
-- 在进一步收紧默认路径之后，`gpu6` smoke 里 `classification_detection_method` 稳定为 `official_template_vllm`
-- 最新验证产物：
-  - `/tmp/self_instruct_step2_check.parquet`
-  - `/tmp/self_instruct_step2_check.candidates.parquet`
-  - 其中 `classification_raw_generation` 为 `No`
-  - `classification_finish_reason = stop`
-  - `classification_stop_reason = None`
-
-所以这一步现在更准确地说是：
-
-- 默认路径：`官方模板优先`
-- 调试兜底：`可选 heuristic fallback`
-
-按当前约定的标准，step 2 现在也可以认为已经达到“官方等价迁移”：
-
-- classification prompt 主体已经按官方模板走
-- 默认路径不再依赖本地 heuristic
-- 默认判别结果已经能在真实 smoke 中稳定走 `official_template_vllm`
-- 剩余保留差异只剩：
-  - `OpenAI completion -> 本地 Qwen + vLLM`
-  - classification prompt 外层加了最小 Qwen chat wrapper
-  - `Yes/No` 解析与换行 stop 规则作为最小模型适配保留
 
 ### `generate_instances.py`
 
@@ -579,43 +464,6 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
 
 那部分工作已经继续放在 step 4。
 
-截至 `2026-07-30` 的最新真实 smoke：
-
-- step 3 已经不是 stub
-- 在 `gpu6` 上确实拿到了 teacher 生成结果
-- `instance_generation_method` 已经出现 `self_instruct_instance_teacher`
-- `classification_detection_method` 已经出现 `official_template_vllm`
-- `raw_instances` 已经能保存真实模型生成内容
-
-另外，这一步还专门对过一次官方源码：
-
-- 官方 `generate_instances.py` 的核心行为是：
-  - 按 instruction 拼 prompt
-  - 混合 batch 发请求
-  - 如果一个 batch 里存在 classification task，则这一批 `max_tokens=300`
-  - 否则 `max_tokens=350`
-  - 生成后主要写出 `raw_instances + metadata`
-- 现在本地实现已经按这个主体逻辑收紧
-- 原始模型输出现在继续原样保留在：
-  - `instance_raw_generation`
-  - `raw_instances`
-- 也就是说，step 3 这一层不再额外改写 `raw_instances`
-- 对 classification task，又额外补了一层很小的本地标签约束：
-  - 如果最终 instruction 里能明确抽出标签集合
-  - wrapper 会显式告诉本地模型“只能使用这些标签”
-  - 这样可以减少从前面官方示例里误借标签的现象
-
-按当前约定的标准，step 3 现在也可以认为已经达到“官方等价迁移”：
-
-- prompt 主体逻辑已按官方 step 3 走
-- stop sequences 已按官方脚本走
-- batch 内 `max_tokens` 选择逻辑已按官方脚本走
-- 默认主输出已经收紧为 `raw_instances + metadata`
-- 剩余保留差异只剩：
-  - `OpenAI completion -> 本地 Qwen + vLLM`
-  - completion prompt 外层加了最小 Qwen chat wrapper
-  - classification wrapper 会显式重复最终任务的 allowed labels
-  - 为了接回 DataObs，额外保留了一些调试字段
 
 ### `prepare_for_finetuning.py`
 
@@ -652,23 +500,6 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
 - 前三步尽量贴官方 Self-Instruct 中间逻辑
 - 最后一步把结果接回 DataObs 的 parquet 训练格式
 
-这一步最近还补了一个重要改动：
-
-- 现在已经进一步按官方 `prepare_for_finetuning.py` 的主体顺序收紧：
-  - 先解析 `raw_instances`
-  - 再做 invalid / duplicate 过滤
-  - 如果 `finish_reason == length`，丢掉最后一个可能不完整的实例
-  - 每条 instruction 最多随机保留 5 个实例
-  - 再按官方风格编码成 `prompt/completion`
-- `prompt/completion` 现在也不再只用单一模板，而是改成和官方相同思路的多模板随机编码
-- 对本地 chat model 的 non-classification 自由输出，step 4 还保留了一层最小解析前适配：
-  - 如果原始结果不是 `Example 1 ...` 或 `Output: ...`
-  - 会只在“进入官方解析器之前”补一个最小 `Output:` 前缀
-  - `raw_instances` 本身仍然保留原始模型输出
-
-这一步已经明显更像官方 `prepare_for_finetuning.py` 了。
-
-但这里仍然不是“官方脚本逐字照搬”的最终形态，因为最后输出还是必须适配 DataObs 的 parquet 列结构。
 
 ### `__init__.py`
 
