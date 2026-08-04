@@ -77,6 +77,26 @@ def _consistency_gold_answer(dataset: str, gold_answer: Any) -> Any:
     return gold_answer
 
 
+def _format_consistency_prompt(
+    template: str,
+    *,
+    question: str,
+    gold_answer: Any,
+    backward_question: str,
+    backward_pred: str,
+) -> str:
+    """Fill placeholders without interpreting LaTeX braces in prompt examples."""
+    prompt = template
+    for placeholder, value in {
+        "{question}": question,
+        "{gold_answer}": gold_answer,
+        "{backward_question}": backward_question,
+        "{backward_pred}": backward_pred,
+    }.items():
+        prompt = prompt.replace(placeholder, str(value))
+    return prompt
+
+
 def run(args: argparse.Namespace) -> None:
     """Run RevThink-style backward question, reasoning, and consistency filtering."""
     start_time = time.time()
@@ -151,7 +171,8 @@ def run(args: argparse.Namespace) -> None:
     # Stage 4: ask the teacher to judge original/backward consistency.
     consistency_template = consistency_prompt_template(args.dataset)
     consistency_prompts = [
-        consistency_template.format(
+        _format_consistency_prompt(
+            consistency_template,
             question=row["question"],
             gold_answer=_consistency_gold_answer(args.dataset, row["gold_answer"]),
             backward_question=row["backward_question"],

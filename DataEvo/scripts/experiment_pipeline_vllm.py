@@ -10,12 +10,12 @@ original pipeline.
 
 Usage:
   # SFT eval only with vLLM
-  python DataObs/scripts/experiment_pipeline_vllm.py \
+  python DataEvo/scripts/experiment_pipeline_vllm.py \
     --experiment-id exp1100_gsm8k_qwen3_teacher_qwen3_1_7b_t0.7_n4 \
     --dataset gsm8k \
-    --base-model /data2/pretrain_models/Qwen3-4B \
-    --teacher-model /data2/pretrain_models/Qwen3-1.7B \
-    --output-dir /home/hrh/data/COT/experiments \
+    --base-model /data/pretrain_models/Qwen3-4B \
+    --teacher-model /data/pretrain_models/Qwen3-1.7B \
+    --output-dir /data/hrh/COT/experiments \
     --stages sft_eval \
     --gpu-ids 5 \
     --teacher-num-samples 4 \
@@ -42,13 +42,12 @@ import argparse
 import sys
 from pathlib import Path
 
-# Ensure DataObs/scripts/ is importable
+# Ensure DataEvo/scripts/ is importable
 _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
 from experiment_pipeline import (  # noqa: E402
-    DISTILL_METHODS,
     Pipeline,
     REPO_ROOT,
     check_input,
@@ -107,7 +106,7 @@ class PipelineVLLM(Pipeline):
 
         cmd = [
             sys.executable,
-            str(REPO_ROOT / "DataObs" / "lib" / "evaluation" / "eval_vllm.py"),
+            str(REPO_ROOT / "DataEvo" / "lib" / "evaluation" / "eval_vllm.py"),
             "--model-path", str(checkpoint),
             "--base-model", self.args.base_model,
             "--dataset", self.args.dataset,
@@ -168,7 +167,7 @@ class PipelineVLLM(Pipeline):
 
                 merge_cmd = [
                     sys.executable,
-                    str(REPO_ROOT / "DataObs" / "lib" / "model_ops" / "merge_lora_qwen.py"),
+                    str(REPO_ROOT / "DataEvo" / "lib" / "model_ops" / "merge_lora_qwen.py"),
                     "--base", self.args.base_model,
                     "--lora", str(actor_lora_dir),
                     "--tokenizer", str(actor_hf_dir),
@@ -190,7 +189,7 @@ class PipelineVLLM(Pipeline):
 
         cmd = [
             sys.executable,
-            str(REPO_ROOT / "DataObs" / "lib" / "evaluation" / "eval_vllm.py"),
+            str(REPO_ROOT / "DataEvo" / "lib" / "evaluation" / "eval_vllm.py"),
             "--model-path", str(model_for_eval),
             "--base-model", self.args.base_model,
             "--dataset", self.args.dataset,
@@ -224,7 +223,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--experiment-id", required=True)
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--base-model", required=True)
-    parser.add_argument("--output-dir", default="/home/hrh/data/COT/experiments")
+    parser.add_argument("--output-dir", default="/data/hrh/COT/experiments")
     parser.add_argument(
         "--stages", default="sft,sft_eval,grpo,grpo_eval",
         help="Comma-separated stages: distill,metrics,sft,sft_eval,grpo,grpo_eval",
@@ -237,7 +236,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-name", default="")
 
     # Distillation
-    parser.add_argument("--distill-method", default="teacher_correctness_filter", choices=DISTILL_METHODS)
     parser.add_argument("--distill-dataset", default="")
     parser.add_argument("--distill-input", default="")
     parser.add_argument("--distill-output", default="")
@@ -252,12 +250,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--teacher-gpu-memory-utilization", type=float, default=0.95)
     parser.add_argument("--teacher-correct-threshold", type=float, default=0.99)
     parser.add_argument("--teacher-do-sample", action="store_true")
-    parser.add_argument("--trust-remote-code", action="store_true")
     parser.add_argument("--disable-teacher-filter", action="store_true")
-    parser.add_argument("--rephrase-max-new-tokens", type=int, default=512)
-    parser.add_argument("--backward-question-max-new-tokens", type=int, default=1024)
-    parser.add_argument("--consistency-max-new-tokens", type=int, default=1024)
     parser.add_argument("--smoke-num-rows", type=int, default=0)
+    parser.add_argument("--evo-difficulty", default="", help="DataEvo generation difficulty profile passed to distillation.")
+    parser.add_argument("--evo-reason-length", default="", help="DataEvo reasoning length profile passed to distillation.")
+    parser.add_argument("--evo-teacher-type", default="", help="DataEvo teacher type profile passed to distillation.")
+    parser.add_argument("--evo-prompt-suffix", default="", help="Extra DataEvo prompt suffix passed to distillation.")
 
     # Metrics
     parser.add_argument("--metrics-data", default="")
@@ -315,11 +313,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--grpo-env", action="append", default=[])
 
     args = parser.parse_args()
-    if (
-        args.distill_method in {"answer_augmentation", "question_rephrasing", "question_augmentation"}
-        and args.teacher_num_samples > 1
-        and not args.teacher_do_sample
-    ):
+    if args.teacher_num_samples > 1 and not args.teacher_do_sample:
         args.teacher_do_sample = True
     return args
 

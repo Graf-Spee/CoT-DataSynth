@@ -2,7 +2,7 @@
 
 This directory contains local-teacher heuristic data augmentation baselines for DataObs-format parquet distillation data.
 
-All scripts read parquet files with `prompt`, `reward_model`, and `data_source`, generate candidates with the local vLLM teacher, filter candidates with the corresponding `verl.utils.reward_score` reward through DataObs helpers, and write:
+All scripts read parquet files with `prompt`, `reward_model`, and `data_source`, generate candidates with the local vLLM teacher, and write:
 
 - `--output-file`: kept training rows
 - `<output stem>.candidates.parquet`: all generated candidates and filter metadata
@@ -21,6 +21,8 @@ python DataObs/baselines/heuristics/<script>.py \
 ```
 
 Use `--smoke-num-rows N` for quick checks. If generating more than one sample per prompt, pass `--do-sample`.
+
+Pipelines that generate answers apply the corresponding `verl.utils.reward_score` reward through DataObs helpers. `question_augmentation.py` is different: it generates backward questions and only drops empty generations.
 
 ## Pipelines
 
@@ -87,10 +89,10 @@ python DataObs/baselines/heuristics/reverse_thinking_augmentation.py \
 
 File: `question_augmentation.py`
 
-Generates brand-new GSM8K-style math word problems from seed questions using the prompts from `Common 7B Language Models Already Possess Strong Math Capabilities`, Appendix A. It first creates and self-verifies a new question, then generates a step-by-step solution and final numeric answer. The final answer is treated as pseudo-gold and checked with the DataObs GSM8K reward for self-consistency.
+Implements the original reference code's practical Question Augmentation setting: instead of generating truly novel questions, it trains the backward-question generation task. For each seed `(question, gold_answer)`, the teacher generates an inverse/backward question using the RevThink backward-question prompt. The kept training row asks the student to generate the inverse question, with the generated backward question as the target answer.
 
-This script only supports `--dataset gsm8k`, because the included paper prompt only covers GSM8K.
-If `--dataset` is omitted for this script, it defaults to `gsm8k`.
+This covers the datasets that have backward-question ICL prompts in this directory: `arc-challenge`, `commonsenseqa`, `gsm8k`, `math`, `math-500`, and `strategyqa`.
+Coding datasets are disabled for this method because the backward-question prompts do not cover code generation tasks.
 
 Example:
 
@@ -102,7 +104,5 @@ python DataObs/baselines/heuristics/question_augmentation.py \
   --model-id /path/to/teacher \
   --gpu-ids 0 \
   --do-sample \
-  --temperature 1.0 \
-  --num-new-questions 1 \
-  --num-answers-per-question 1
+  --num-backward-questions 1
 ```

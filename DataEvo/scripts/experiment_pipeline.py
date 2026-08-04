@@ -21,84 +21,66 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-DISTILL_METHODS = (
-    "teacher_correctness_filter",
-    "question_rephrasing",
-    "answer_augmentation",
-    "question_augmentation",
-    "reverse_thinking",
-    "self_instruct",
-)
-
-DISTILL_METHOD_SCRIPTS = {
-    "teacher_correctness_filter": REPO_ROOT / "DataObs" / "lib" / "data_process" / "cot_distill_teacher_filter.py",
-    "question_rephrasing": REPO_ROOT / "DataObs" / "baselines" / "heuristics" / "question_rephrasing.py",
-    "answer_augmentation": REPO_ROOT / "DataObs" / "baselines" / "heuristics" / "answer_augmentation.py",
-    "question_augmentation": REPO_ROOT / "DataObs" / "baselines" / "heuristics" / "question_augmentation.py",
-    "reverse_thinking": REPO_ROOT / "DataObs" / "baselines" / "heuristics" / "reverse_thinking_augmentation.py",
-    "self_instruct": REPO_ROOT / "DataObs" / "baselines" / "self-instruct" / "self_instruct.py",
-}
-
 DATASET_DEFAULTS: dict[str, dict[str, str]] = {
     "gsm8k": {
-        "distill_input": "/data2/open_datasets/GSM8K/main/train-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/GSM8K/main/train-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
+        "distill_input": "/data/open_datasets/GSM8K/main/train-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/GSM8K/main/train-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
     },
     "math-500": {
-        "distill_input": "/data2/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
-        "rl_train": "/data2/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
-        "rl_val": "/data2/open_datasets/MATH-500/test.parquet",
+        "distill_input": "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_train": "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_val": "/data/open_datasets/MATH-500/test.parquet",
     },
     "math": {
-        "distill_input": "/data2/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
-        "rl_train": "/data2/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
-        "rl_val": "/data2/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "distill_input": "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_train": "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_val": "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
     },
     "aqua_rat": {
-        "distill_input": "/data2/open_datasets/aqua_rat/raw/train-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/aqua_rat/raw/train-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
+        "distill_input": "/data/open_datasets/aqua_rat/raw/train-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/aqua_rat/raw/train-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
     },
     "arc-challenge": {
-        "distill_input": "/data2/open_datasets/ai2_arc/ARC-Challenge/train-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/ai2_arc/ARC-Challenge/train-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
+        "distill_input": "/data/open_datasets/ai2_arc/ARC-Challenge/train-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/ai2_arc/ARC-Challenge/train-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
     },
     "strategyQA": {
-        "distill_input": "/data2/open_datasets/StrategyQA/data/train-00000-of-00001-506370352f622815.parquet",
-        "rl_train": "/data2/open_datasets/StrategyQA/data/train-00000-of-00001-506370352f622815.parquet",
-        "rl_val": "/data2/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
+        "distill_input": "/data/open_datasets/StrategyQA/data/train-00000-of-00001-506370352f622815.parquet",
+        "rl_train": "/data/open_datasets/StrategyQA/data/train-00000-of-00001-506370352f622815.parquet",
+        "rl_val": "/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
     },
     "commonsenseQA": {
-        "distill_input": "/data2/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
+        "distill_input": "/data/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
     },
     "mbpp": {
-        "distill_input": "/data2/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
+        "distill_input": "/data/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
     },
     "mbppplus": {
-        "distill_input": "/data2/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
-        "rl_train": "/data2/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
-        "rl_val": "/data2/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+        "distill_input": "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+        "rl_train": "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+        "rl_val": "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
     },
     "humaneval": {
-        "distill_input": "/data2/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+        "distill_input": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+        "rl_train": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+        "rl_val": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
     },
     "humanevalplus": {
-        "distill_input": "/data2/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
-        "rl_train": "/data2/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
-        "rl_val": "/data2/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+        "distill_input": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+        "rl_train": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+        "rl_val": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
     },
     "numinamath": {
-        "distill_input": "/data2/open_datasets/NuminaMath-CoT/data/train-00000-of-00005.parquet",
-        "rl_train": "/data2/open_datasets/NuminaMath-CoT/data/train-00000-of-00005.parquet",
-        "rl_val": "/data2/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
+        "distill_input": "/data/open_datasets/NuminaMath-CoT/data/train-00000-of-00005.parquet",
+        "rl_train": "/data/open_datasets/NuminaMath-CoT/data/train-00000-of-00005.parquet",
+        "rl_val": "/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
     },
 }
 
@@ -174,7 +156,7 @@ def append_jsonl(path: Path, data: Any) -> None:
 
 
 def prepare_parquet(dataset: str, input_path: str, output_path: Path) -> Path:
-    script = REPO_ROOT / "DataObs" / "lib" / "evaluation" / "prepare_eval_data.py"
+    script = REPO_ROOT / "DataEvo" / "lib" / "evaluation" / "prepare_eval_data.py"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [
@@ -316,7 +298,6 @@ class Pipeline:
             "dataset": self.args.dataset,
             "base_model": self.args.base_model,
             "teacher_model": self.args.teacher_model,
-            "distill_method": self.args.distill_method,
             "data_variant": self.args.data_variant,
             "reasoning_source": self.args.reasoning_source,
             "paths": {
@@ -418,14 +399,6 @@ class Pipeline:
         return self.args.model_name or f"{self.args.experiment_id}-{suffix}"
 
     def stage_distill(self) -> None:
-        distill_method = self.args.distill_method
-        if distill_method == "teacher_correctness_filter" and self.args.teacher_num_samples != 1:
-            raise SystemExit(
-                "[ERROR] --distill-method teacher_correctness_filter requires "
-                "--teacher-num-samples 1. Use --distill-method answer_augmentation "
-                "for multi-sample teacher answer baselines."
-            )
-
         distill_input_source = self.distill_input_path()
         check_input(self.args.teacher_model, "teacher model", True, self.args.dry_run)
         check_input(distill_input_source, "distill input", True, self.args.dry_run)
@@ -433,10 +406,9 @@ class Pipeline:
             distill_input = distill_input_source
         else:
             distill_input = str(self.prepare_dataset_data(distill_input_source, "distill_input"))
-
         cmd = [
             sys.executable,
-            str(DISTILL_METHOD_SCRIPTS[distill_method]),
+            str(REPO_ROOT / "DataEvo" / "lib" / "data_process" / "cot_distill_teacher_filter.py"),
             "--dataset",
             self.args.distill_dataset or self.args.dataset,
             "--input-file",
@@ -447,6 +419,8 @@ class Pipeline:
             self.args.teacher_model,
             "--gpu-ids",
             self.args.distill_gpu_ids or self.args.gpu_ids,
+            "--num-cots",
+            str(self.args.teacher_num_samples),
             "--temperature",
             str(self.args.teacher_temperature),
             "--top-p",
@@ -462,48 +436,21 @@ class Pipeline:
             "--correct-threshold",
             str(self.args.teacher_correct_threshold),
         ]
-        if distill_method == "teacher_correctness_filter":
-            cmd += ["--num-cots", "1"]
-        elif distill_method == "answer_augmentation":
-            cmd += ["--num-augmented-answers", str(self.args.teacher_num_samples)]
-        elif distill_method == "question_rephrasing":
-            cmd += [
-                "--num-rephrases",
-                str(self.args.teacher_num_samples),
-                "--num-cots",
-                "1",
-                "--rephrase-max-new-tokens",
-                str(self.args.rephrase_max_new_tokens),
-            ]
-        elif distill_method == "question_augmentation":
-            cmd += [
-                "--num-backward-questions",
-                str(self.args.teacher_num_samples),
-                "--backward-question-max-new-tokens",
-                str(self.args.backward_question_max_new_tokens),
-            ]
-        elif distill_method == "reverse_thinking":
-            cmd += [
-                "--backward-question-max-new-tokens",
-                str(self.args.backward_question_max_new_tokens),
-                "--consistency-max-new-tokens",
-                str(self.args.consistency_max_new_tokens),
-            ]
-        uses_teacher_num_samples = distill_method in {
-            "answer_augmentation",
-            "question_rephrasing",
-            "question_augmentation",
-        }
-        if self.args.teacher_do_sample or (uses_teacher_num_samples and self.args.teacher_num_samples > 1):
+        if self.args.evo_difficulty:
+            cmd += ["--difficulty-profile", self.args.evo_difficulty]
+        if self.args.evo_reason_length:
+            cmd += ["--reason-length-profile", self.args.evo_reason_length]
+        if self.args.evo_teacher_type:
+            cmd += ["--teacher-type-profile", self.args.evo_teacher_type]
+        if self.args.evo_prompt_suffix:
+            cmd += ["--extra-prompt-suffix", self.args.evo_prompt_suffix]
+        if self.args.teacher_num_samples > 1 or self.args.teacher_do_sample:
             cmd.append("--do-sample")
-        if self.args.trust_remote_code:
-            cmd.append("--trust-remote-code")
         if self.args.disable_teacher_filter:
             cmd.append("--disable-teacher-filter")
         if self.args.smoke_num_rows > 0:
             cmd += ["--smoke-num-rows", str(self.args.smoke_num_rows)]
         self.run_cmd("distill", cmd)
-        self.results["distill_method"] = distill_method
         self.results["distill_output"] = str(self.distill_output)
         self.results["distill_candidates"] = str(self.distill_output.with_name(f"{self.distill_output.stem}.candidates.parquet"))
         self.results["distill_summary"] = str(self.distill_output.with_name(f"{self.distill_output.stem}.summary.json"))
@@ -513,7 +460,7 @@ class Pipeline:
         check_input(data_path, "metrics data", True, self.args.dry_run)
         cmd = [
             sys.executable,
-            str(REPO_ROOT / "DataObs" / "scripts" / "data_obs_pipeline.py"),
+            str(REPO_ROOT / "DataEvo" / "scripts" / "data_obs_pipeline.py"),
             "--data_path",
             data_path,
             "--data_name",
@@ -543,7 +490,7 @@ class Pipeline:
         check_input(sft_val_data, "SFT val data", True, self.args.dry_run)
         cmd = [
             "bash",
-            str(REPO_ROOT / "DataObs" / "lib" / "training" / "sft_dataobs.sh"),
+            str(REPO_ROOT / "DataEvo" / "lib" / "training" / "sft_dataobs.sh"),
             self.args.base_model,
             sft_data,
             sft_val_data,
@@ -591,7 +538,7 @@ class Pipeline:
         check_input(rl_val, "RL val data", True, self.args.dry_run)
         cmd = [
             "bash",
-            str(REPO_ROOT / "DataObs" / "lib" / "training" / "grpo_from_sft.sh"),
+            str(REPO_ROOT / "DataEvo" / "lib" / "training" / "grpo_from_sft.sh"),
             str(checkpoint),
             rl_train,
             rl_val,
@@ -611,7 +558,7 @@ class Pipeline:
         check_input(str(self.grpo_dir), "GRPO dir", True, self.args.dry_run)
         cmd = [
             "bash",
-            str(REPO_ROOT / "DataObs" / "lib" / "evaluation" / "eval_grpo_dataobs.sh"),
+            str(REPO_ROOT / "DataEvo" / "lib" / "evaluation" / "eval_grpo_dataobs.sh"),
             str(self.grpo_dir),
             self.args.base_model,
             self.args.dataset,
@@ -663,7 +610,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-name", default="", help="Override MODEL_NAME used by eval scripts.")
 
     # Distillation.
-    parser.add_argument("--distill-method", default="teacher_correctness_filter", choices=DISTILL_METHODS)
     parser.add_argument("--distill-dataset", default="")
     parser.add_argument("--distill-input", default="")
     parser.add_argument("--distill-output", default="")
@@ -678,12 +624,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--teacher-gpu-memory-utilization", type=float, default=0.95)
     parser.add_argument("--teacher-correct-threshold", type=float, default=0.99)
     parser.add_argument("--teacher-do-sample", action="store_true")
-    parser.add_argument("--trust-remote-code", action="store_true")
     parser.add_argument("--disable-teacher-filter", action="store_true")
-    parser.add_argument("--rephrase-max-new-tokens", type=int, default=512)
-    parser.add_argument("--backward-question-max-new-tokens", type=int, default=1024)
-    parser.add_argument("--consistency-max-new-tokens", type=int, default=1024)
     parser.add_argument("--smoke-num-rows", type=int, default=0)
+    parser.add_argument("--evo-difficulty", default="", help="DataEvo generation difficulty profile passed to distillation.")
+    parser.add_argument("--evo-reason-length", default="", help="DataEvo reasoning length profile passed to distillation.")
+    parser.add_argument("--evo-teacher-type", default="", help="DataEvo teacher type profile passed to distillation.")
+    parser.add_argument("--evo-prompt-suffix", default="", help="Extra DataEvo prompt suffix passed to distillation.")
 
     # Metrics.
     parser.add_argument("--metrics-data", default="")
@@ -724,19 +670,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--grpo-env", action="append", default=[], help="Environment override for GRPO, KEY=VALUE; repeatable.")
 
     args = parser.parse_args()
-    if (
-        args.distill_method in {"answer_augmentation", "question_rephrasing", "question_augmentation"}
-        and args.teacher_num_samples > 1
-        and not args.teacher_do_sample
-    ):
+    if args.teacher_num_samples > 1 and not args.teacher_do_sample:
         args.teacher_do_sample = True
     return args
 
 
 if __name__ == "__main__":
     print(
-        "[DEPRECATED] DataObs/scripts/experiment_pipeline.py uses legacy shell eval paths. "
-        "Use DataObs/scripts/experiment_pipeline_vllm.py for current experiments.",
+        "[DEPRECATED] DataEvo/scripts/experiment_pipeline.py uses legacy shell eval paths. "
+        "Use DataEvo/scripts/experiment_pipeline_vllm.py for current experiments.",
         file=sys.stderr,
     )
     Pipeline(parse_args()).run()
