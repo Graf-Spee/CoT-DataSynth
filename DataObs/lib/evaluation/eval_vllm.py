@@ -37,53 +37,64 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 DATASET_CONFIG: dict[str, dict[str, Any]] = {
+    "aime25": {
+        "reward": "verl/utils/reward_score/math_verify.py",
+        "eval_data": "/home/hrh/open_datasets/AIME25/test.parquet",
+        "score_without_reasoning": True,
+    },
     "arc-challenge": {
         "reward": "verl/utils/reward_score/multiple_choice.py",
-        "eval_data": "/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
     },
     "aqua_rat": {
         "reward": "verl/utils/reward_score/multiple_choice.py",
-        "eval_data": "/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
     },
     "commonsenseQA": {
         "reward": "verl/utils/reward_score/multiple_choice.py",
-        "eval_data": "/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
     },
     "gsm8k": {
         "reward": "verl/utils/reward_score/gsm8k.py",
-        "eval_data": "/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
+    },
+    "gpqa-diamond": {
+        "reward": "verl/utils/reward_score/multiple_choice.py",
+        "eval_data": "/home/hrh/open_datasets/GPQA-Diamond/test/gpqa_diamond.parquet",
+        "score_without_reasoning": True,
     },
     "humaneval": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
     },
     "humanevalplus": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+        "eval_data": "/home/hrh/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
     },
     "ifeval": {
-        "eval_data": "/data/open_datasets/IFEval/input_data.jsonl",
+        "eval_data": "/home/hrh/open_datasets/IFEval/input_data.jsonl",
         "is_ifeval": True,
+        "score_without_reasoning": True,
     },
     "math-500": {
         "reward": "verl/utils/reward_score/math_verify.py",
-        "eval_data": "/data/open_datasets/MATH-500/test.parquet",
+        "eval_data": "/home/hrh/open_datasets/MATH-500/test.parquet",
     },
     "mbpp": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
     },
     "mbppplus": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+        "eval_data": "/home/hrh/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
     },
     "numinamath": {
         "reward": "verl/utils/reward_score/math_verify.py",
-        "eval_data": "/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
     },
     "strategyQA": {
         "reward": "verl/utils/reward_score/truefalse.py",
-        "eval_data": "/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
+        "eval_data": "/home/hrh/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
     },
 }
 
@@ -95,10 +106,14 @@ def _normalize_dataset(name: str) -> str:
         "arc": "arc-challenge",
         "arcchallenge": "arc-challenge",
         "ai2arc": "arc-challenge",
+        "aime25": "aime25",
+        "aime2025": "aime25",
         "aquarat": "aqua_rat",
         "commonsenseqa": "commonsenseQA",
         "csqa": "commonsenseQA",
         "gsm8k": "gsm8k",
+        "gpqa": "gpqa-diamond",
+        "gpqadiamond": "gpqa-diamond",
         "humaneval": "humaneval",
         "humanevalplus": "humanevalplus",
         "ifeval": "ifeval",
@@ -256,6 +271,19 @@ def _apply_user_chat_template(tokenizer: Any, prompt: str, enable_thinking: bool
     )
 
 
+def _strip_reasoning_content(text: str) -> str:
+    """Return the visible answer after a Qwen-style reasoning block."""
+    if "</think>" in text:
+        return text.rsplit("</think>", 1)[-1].strip()
+    return text
+
+
+def _score_text(dataset_cfg: dict[str, Any], response: str) -> str:
+    if dataset_cfg.get("score_without_reasoning"):
+        return _strip_reasoning_content(response)
+    return response
+
+
 def run_ifeval_vllm_eval(
     *,
     resolved_model: Path,
@@ -319,7 +347,8 @@ def run_ifeval_vllm_eval(
 
     all_responses = [[o.text for o in output.outputs] for output in outputs]
     first_responses = [responses[0] if responses else "" for responses in all_responses]
-    metrics = score_ifeval_opencompass(first_responses, references, origin_prompt=origin_prompts)
+    scored_responses = [_strip_reasoning_content(response) for response in first_responses]
+    metrics = score_ifeval_opencompass(scored_responses, references, origin_prompt=origin_prompts)
 
     prompt_strict_percent = float(metrics["Prompt-level-strict-accuracy"])
     prompt_strict_accuracy = prompt_strict_percent / 100.0
@@ -334,6 +363,7 @@ def run_ifeval_vllm_eval(
             "formatted_prompt": prompts,
             "reference": references,
             "responses": all_responses,
+            "scored_responses": scored_responses,
             "score": [
                 1.0 if metrics["details"][str(i)]["is_strict_correct"] else 0.0
                 for i in range(len(references))
@@ -361,6 +391,7 @@ def run_ifeval_vllm_eval(
             "max_response_len": max_response_len,
             "batch_size": batch_size,
             "enable_thinking": enable_thinking,
+            "score_without_reasoning": True,
             "metric_primary": "Prompt-level-strict-accuracy",
             "alignment": "OpenCompass IFEvaluator",
         },
@@ -384,6 +415,7 @@ def run_ifeval_vllm_eval(
         {
             "prompt": origin_prompts[i],
             "response": first_responses[i],
+            "scored_response": scored_responses[i],
             "score": float(details[str(i)]["is_strict_correct"]),
             "is_strict_correct": details[str(i)]["is_strict_correct"],
             "is_loose_correct": details[str(i)]["is_loose_correct"],
@@ -543,13 +575,15 @@ def run_vllm_eval(
 
     # Extract responses and score
     all_responses = []
+    all_scored_responses = []
     all_scores = []
     for output in outputs:
         responses = [o.text for o in output.outputs]
         all_responses.append(responses)
 
         # Use first response for scoring
-        pred_text = responses[0]
+        pred_text = _score_text(ds_cfg, responses[0])
+        all_scored_responses.append(pred_text)
         ground_truth = df.iloc[len(all_scores)]["reward_model"]["ground_truth"]
         score = compute_score_fn(pred_text, ground_truth)
         all_scores.append(score)
@@ -560,6 +594,7 @@ def run_vllm_eval(
     # Save results
     results_df = df.copy()
     results_df["responses"] = all_responses
+    results_df["scored_responses"] = all_scored_responses
     results_df["score"] = all_scores
 
     generated_dir = out_dir / "generated"
@@ -582,6 +617,7 @@ def run_vllm_eval(
             "max_response_len": max_response_len,
             "batch_size": batch_size,
             "enable_thinking": enable_thinking,
+            "score_without_reasoning": bool(ds_cfg.get("score_without_reasoning")),
         },
     }
     results_json_path = generated_dir / "results.json"
@@ -610,7 +646,11 @@ def run_vllm_eval(
             labeled.append({
                 "prompt": prompts[i],
                 "response": o.text,
-                "score": float(compute_score_fn(o.text, df.iloc[i]["reward_model"]["ground_truth"])),
+                "scored_response": _score_text(ds_cfg, o.text),
+                "score": float(compute_score_fn(
+                    _score_text(ds_cfg, o.text),
+                    df.iloc[i]["reward_model"]["ground_truth"],
+                )),
             })
     labeled_path = generated_dir / "responses_labeled.json"
     with open(labeled_path, "w", encoding="utf-8") as f:

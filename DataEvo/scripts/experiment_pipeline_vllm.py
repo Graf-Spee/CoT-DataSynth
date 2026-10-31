@@ -13,9 +13,9 @@ Usage:
   python DataEvo/scripts/experiment_pipeline_vllm.py \
     --experiment-id exp1100_gsm8k_qwen3_teacher_qwen3_1_7b_t0.7_n4 \
     --dataset gsm8k \
-    --base-model /data/pretrain_models/Qwen3-4B \
-    --teacher-model /data/pretrain_models/Qwen3-1.7B \
-    --output-dir /data/hrh/COT/experiments \
+    --base-model /data2/pretrain_models/Qwen3-4B \
+    --teacher-model /data2/pretrain_models/Qwen3-1.7B \
+    --output-dir /home/hrh/data/COT/experiments \
     --stages sft_eval \
     --gpu-ids 5 \
     --teacher-num-samples 4 \

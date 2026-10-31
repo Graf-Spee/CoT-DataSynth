@@ -29,7 +29,7 @@
 
 当前仓库：
 
-- 数据：`/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet`
+- 数据：`/home/hrh/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet`
 - 0-shot chat message。
 - 有 `system: You are a helpful assistant.`
 - 要求 step by step。
@@ -63,7 +63,7 @@ Answer:
 
 当前仓库：
 
-- 数据：`/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet`
+- 数据：`/home/hrh/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet`
 - 0-shot chat message，有 system role。
 - 要求 step by step。
 - 最终答案是 `(A)` 到 `(E)`。
@@ -91,7 +91,7 @@ The answer is
 
 当前仓库：
 
-- 数据：`/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet`
+- 数据：`/home/hrh/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet`
 - 0-shot chat message，有 system role。
 - 要求 step-by-step。
 - 最终答案是 `(A)` 到 `(E)`。
@@ -126,7 +126,7 @@ Answer:
 
 当前仓库：
 
-- 数据：`/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet`
+- 数据：`/home/hrh/open_datasets/GSM8K/main/test-00000-of-00001.parquet`
 - user-only chat message。
 - 结尾：
 
@@ -163,7 +163,7 @@ Please reason step by step, and put your final answer within \boxed{}.
 
 当前仓库：
 
-- 数据：`/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet`
+- 数据：`/home/hrh/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet`
 - 0-shot。
 - 用 markdown code block 展示函数签名和 docstring。
 - 要求：
@@ -195,7 +195,7 @@ Your response should only contain the code for this function.
 
 当前仓库：
 
-- 数据：`/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet`
+- 数据：`/home/hrh/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet`
 - 和 HumanEval 一样的 wrapper。
 - 要求 step-by-step 和 markdown Python code block。
 
@@ -220,7 +220,7 @@ Complete the following python code:
 
 当前仓库：
 
-- 数据：`/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet`
+- 数据：`/home/hrh/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet`
 - chat message，有 system role。
 - user prompt：
 
@@ -251,7 +251,7 @@ Please reason step by step, and put your final answer within \boxed{}.
 
 当前仓库：
 
-- 数据：`/data/open_datasets/MATH-500/test.parquet`
+- 数据：`/home/hrh/open_datasets/MATH-500/test.parquet`
 - chat message，有 system role。
 - 要求 step-by-step 和 boxed answer。
 - 部分样本还会加：
@@ -280,7 +280,7 @@ Please reason step by step, and put your final answer within \boxed{}.
 
 当前仓库：
 
-- 数据：`/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet`
+- 数据：`/home/hrh/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet`
 - 0-shot。
 - 包含 task text 和 tests。
 - 结尾：
@@ -322,7 +322,7 @@ Your code should pass these tests:
 
 当前仓库：
 
-- 数据：`/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet`
+- 数据：`/home/hrh/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet`
 - 和 MBPP 一样：0-shot、tests、markdown Python block、step-by-step。
 
 OpenCompass：
@@ -340,7 +340,7 @@ OpenCompass：
 
 当前仓库：
 
-- 数据：`/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet`
+- 数据：`/home/hrh/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet`
 - chat message，有 system role。
 - 和 MATH 类似：
 
@@ -364,7 +364,7 @@ OpenCompass：
 
 当前仓库：
 
-- 数据：`/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet`
+- 数据：`/home/hrh/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet`
 - 0-shot chat message，有 system role。
 - 包含：
   - term and description

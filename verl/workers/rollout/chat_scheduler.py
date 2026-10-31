@@ -368,6 +368,11 @@ class ChatCompletionScheduler:
             await session.close()
 
     async def generate_sequences(self, batch: DataProto) -> DataProto:
+        # Stateful adapters may own the complete episode lifecycle, including
+        # cleanup on generation failure and verifier-backed terminal rewards.
+        episode_generator = getattr(self.completion_callback, "generate_sequences", None)
+        if episode_generator is not None:
+            return await episode_generator(batch)
         t_start = time.time()
         kwargs = dict(
             model=self.model_name,

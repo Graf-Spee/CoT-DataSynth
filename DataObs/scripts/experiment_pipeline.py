@@ -28,6 +28,7 @@ DISTILL_METHODS = (
     "question_augmentation",
     "reverse_thinking",
     "self_instruct",
+    "cot_self_instruct",
 )
 
 DISTILL_METHOD_SCRIPTS = {
@@ -37,68 +38,69 @@ DISTILL_METHOD_SCRIPTS = {
     "question_augmentation": REPO_ROOT / "DataObs" / "baselines" / "heuristics" / "question_augmentation.py",
     "reverse_thinking": REPO_ROOT / "DataObs" / "baselines" / "heuristics" / "reverse_thinking_augmentation.py",
     "self_instruct": REPO_ROOT / "DataObs" / "baselines" / "self-instruct" / "self_instruct.py",
+    "cot_self_instruct": REPO_ROOT / "DataObs" / "baselines" / "cot-self-instruct" / "cot_self_instruct.py",
 }
 
 DATASET_DEFAULTS: dict[str, dict[str, str]] = {
     "gsm8k": {
-        "distill_input": "/data2/open_datasets/GSM8K/main/train-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/GSM8K/main/train-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
+        "distill_input": "/home/hrh/open_datasets/GSM8K/main/train-00000-of-00001.parquet",
+        "rl_train": "/home/hrh/open_datasets/GSM8K/main/train-00000-of-00001.parquet",
+        "rl_val": "/home/hrh/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
     },
     "math-500": {
-        "distill_input": "/data2/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
-        "rl_train": "/data2/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
-        "rl_val": "/data2/open_datasets/MATH-500/test.parquet",
+        "distill_input": "/home/hrh/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_train": "/home/hrh/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_val": "/home/hrh/open_datasets/MATH-500/test.parquet",
     },
     "math": {
-        "distill_input": "/data2/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
-        "rl_train": "/data2/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
-        "rl_val": "/data2/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "distill_input": "/home/hrh/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_train": "/home/hrh/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "rl_val": "/home/hrh/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
     },
     "aqua_rat": {
-        "distill_input": "/data2/open_datasets/aqua_rat/raw/train-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/aqua_rat/raw/train-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
+        "distill_input": "/home/hrh/open_datasets/aqua_rat/raw/train-00000-of-00001.parquet",
+        "rl_train": "/home/hrh/open_datasets/aqua_rat/raw/train-00000-of-00001.parquet",
+        "rl_val": "/home/hrh/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
     },
     "arc-challenge": {
-        "distill_input": "/data2/open_datasets/ai2_arc/ARC-Challenge/train-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/ai2_arc/ARC-Challenge/train-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
+        "distill_input": "/home/hrh/open_datasets/ai2_arc/ARC-Challenge/train-00000-of-00001.parquet",
+        "rl_train": "/home/hrh/open_datasets/ai2_arc/ARC-Challenge/train-00000-of-00001.parquet",
+        "rl_val": "/home/hrh/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
     },
     "strategyQA": {
-        "distill_input": "/data2/open_datasets/StrategyQA/data/train-00000-of-00001-506370352f622815.parquet",
-        "rl_train": "/data2/open_datasets/StrategyQA/data/train-00000-of-00001-506370352f622815.parquet",
-        "rl_val": "/data2/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
+        "distill_input": "/home/hrh/open_datasets/StrategyQA/data/train-00000-of-00001-506370352f622815.parquet",
+        "rl_train": "/home/hrh/open_datasets/StrategyQA/data/train-00000-of-00001-506370352f622815.parquet",
+        "rl_val": "/home/hrh/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
     },
     "commonsenseQA": {
-        "distill_input": "/data2/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
+        "distill_input": "/home/hrh/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet",
+        "rl_train": "/home/hrh/open_datasets/CommonsenseQA/data/train-00000-of-00001.parquet",
+        "rl_val": "/home/hrh/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
     },
     "mbpp": {
-        "distill_input": "/data2/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
+        "distill_input": "/home/hrh/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet",
+        "rl_train": "/home/hrh/open_datasets/mbpp/sanitized/train-00000-of-00001.parquet",
+        "rl_val": "/home/hrh/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
     },
     "mbppplus": {
-        "distill_input": "/data2/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
-        "rl_train": "/data2/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
-        "rl_val": "/data2/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+        "distill_input": "/home/hrh/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+        "rl_train": "/home/hrh/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+        "rl_val": "/home/hrh/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
     },
     "humaneval": {
-        "distill_input": "/data2/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
-        "rl_train": "/data2/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
-        "rl_val": "/data2/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+        "distill_input": "/home/hrh/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+        "rl_train": "/home/hrh/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+        "rl_val": "/home/hrh/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
     },
     "humanevalplus": {
-        "distill_input": "/data2/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
-        "rl_train": "/data2/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
-        "rl_val": "/data2/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+        "distill_input": "/home/hrh/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+        "rl_train": "/home/hrh/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+        "rl_val": "/home/hrh/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
     },
     "numinamath": {
-        "distill_input": "/data2/open_datasets/NuminaMath-CoT/data/train-00000-of-00005.parquet",
-        "rl_train": "/data2/open_datasets/NuminaMath-CoT/data/train-00000-of-00005.parquet",
-        "rl_val": "/data2/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
+        "distill_input": "/home/hrh/open_datasets/NuminaMath-CoT/data/train-00000-of-00005.parquet",
+        "rl_train": "/home/hrh/open_datasets/NuminaMath-CoT/data/train-00000-of-00005.parquet",
+        "rl_val": "/home/hrh/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
     },
 }
 
@@ -381,30 +383,87 @@ class Pipeline:
         if output_path.exists():
             return output_path
         distill_path = self.distill_output
-        seed_path = Path(self.distill_input_path())
         if not distill_path.exists():
             raise SystemExit(f"[ERROR] Cannot build RL train from distill kept prompts; missing distill output: {distill_path}")
-        if not seed_path.exists():
-            raise SystemExit(f"[ERROR] Cannot build RL train from distill kept prompts; missing distill input: {seed_path}")
 
         import pandas as pd
 
         distill_df = pd.read_parquet(distill_path)
         if "source_index" not in distill_df.columns:
             raise SystemExit(f"[ERROR] Distill output missing source_index column: {distill_path}")
-        source_indices = sorted({int(x) for x in distill_df["source_index"].dropna().tolist()})
-        if not source_indices:
-            raise SystemExit(f"[ERROR] No kept source_index found in distill output: {distill_path}")
 
-        prepared_seed_path = self.prepare_dataset_data(str(seed_path), "distill_seed_for_rl")
-        seed_df = pd.read_parquet(prepared_seed_path)
-        max_index = len(seed_df) - 1
-        bad = [idx for idx in source_indices if idx < 0 or idx > max_index]
-        if bad:
-            raise SystemExit(f"[ERROR] Distill source_index out of range for {seed_path}: {bad[:5]}")
+        raw_source_indices = distill_df["source_index"].dropna().tolist()
+        try:
+            source_indices = sorted({int(x) for x in raw_source_indices})
+        except (ValueError, TypeError):
+            source_indices = []
 
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        seed_df.iloc[source_indices].copy().to_parquet(output_path, index=False)
+        if source_indices:
+            seed_path = Path(self.distill_input_path())
+            if not seed_path.exists():
+                raise SystemExit(f"[ERROR] Cannot build RL train from distill kept prompts; missing distill input: {seed_path}")
+
+            prepared_seed_path = self.prepare_dataset_data(str(seed_path), "distill_seed_for_rl")
+            seed_df = pd.read_parquet(prepared_seed_path)
+            max_index = len(seed_df) - 1
+            bad = [idx for idx in source_indices if idx < 0 or idx > max_index]
+            if bad:
+                raise SystemExit(f"[ERROR] Distill source_index out of range for {seed_path}: {bad[:5]}")
+
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            seed_df.iloc[source_indices].copy().to_parquet(output_path, index=False)
+        elif raw_source_indices and self.args.distill_method == "self_instruct":
+            required = {"question", "answer"}
+            missing = sorted(required - set(distill_df.columns))
+            if missing:
+                raise SystemExit(
+                    "[ERROR] Self-Instruct distill output cannot be converted to RL data; "
+                    f"missing columns {missing}: {distill_path}"
+                )
+
+            questions = distill_df["question"].fillna("").astype(str).str.strip()
+            answers = distill_df["answer"].fillna("").astype(str).str.strip()
+            invalid = (questions == "") | (answers == "")
+            if invalid.any():
+                raise SystemExit(
+                    "[ERROR] Self-Instruct distill output contains "
+                    f"{int(invalid.sum())} rows without a question or reference answer: {distill_path}"
+                )
+
+            # Generated Self-Instruct prompts have no original benchmark test cases.
+            # Train them with an explicit reference-similarity reward against the
+            # retained teacher answer instead of mislabeling them as benchmark rows.
+            rl_df = pd.DataFrame(
+                {
+                    "prompt": [
+                        [{"role": "user", "content": question}]
+                        for question in questions.tolist()
+                    ],
+                    "reward_model": [
+                        {"ground_truth": answer}
+                        for answer in answers.tolist()
+                    ],
+                    "data_source": ["self_instruct"] * len(distill_df),
+                    "extra_info": [
+                        {
+                            "source_index": str(source_index),
+                            "dataset": str(dataset),
+                            "reward_type": "reference_token_f1",
+                        }
+                        for source_index, dataset in zip(
+                            distill_df["source_index"].tolist(),
+                            distill_df.get("dataset", pd.Series([self.args.dataset] * len(distill_df))).tolist(),
+                        )
+                    ],
+                }
+            )
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            rl_df.to_parquet(output_path, index=False)
+            self.results["rl_train_reward"] = "self_instruct_reference_token_f1"
+            self.results["rl_train_rows"] = int(len(rl_df))
+        else:
+            raise SystemExit(f"[ERROR] No usable kept source_index found in distill output: {distill_path}")
+
         self.results["rl_train_from_distill_kept"] = str(output_path)
         return output_path
 
@@ -434,34 +493,145 @@ class Pipeline:
         else:
             distill_input = str(self.prepare_dataset_data(distill_input_source, "distill_input"))
 
-        cmd = [
-            sys.executable,
-            str(DISTILL_METHOD_SCRIPTS[distill_method]),
-            "--dataset",
-            self.args.distill_dataset or self.args.dataset,
-            "--input-file",
-            distill_input,
-            "--output-file",
-            str(self.distill_output),
-            "--model-id",
-            self.args.teacher_model,
-            "--gpu-ids",
-            self.args.distill_gpu_ids or self.args.gpu_ids,
-            "--temperature",
-            str(self.args.teacher_temperature),
-            "--top-p",
-            str(self.args.teacher_top_p),
-            "--gen-batch-size",
-            str(self.args.teacher_batch_size),
-            "--max-new-tokens",
-            str(self.args.teacher_max_new_tokens),
-            "--tensor-parallel-size",
-            str(self.args.teacher_tensor_parallel_size),
-            "--gpu-memory-utilization",
-            str(self.args.teacher_gpu_memory_utilization),
-            "--correct-threshold",
-            str(self.args.teacher_correct_threshold),
-        ]
+        if distill_method == "cot_self_instruct":
+            cmd = [
+                sys.executable,
+                str(DISTILL_METHOD_SCRIPTS[distill_method]),
+                "--dataset",
+                self.args.distill_dataset or self.args.dataset,
+                "--input-file",
+                distill_input,
+                "--output-file",
+                str(self.distill_output),
+                "--model-id",
+                self.args.teacher_model,
+                "--gpu-ids",
+                self.args.distill_gpu_ids or self.args.gpu_ids,
+                "--gen-batch-size",
+                str(self.args.teacher_batch_size),
+                "--tensor-parallel-size",
+                str(self.args.teacher_tensor_parallel_size),
+                "--gpu-memory-utilization",
+                str(self.args.teacher_gpu_memory_utilization),
+                "--max-model-len",
+                str(self.args.cot_max_model_len),
+                "--enforce-eager" if self.args.cot_enforce_eager else "--no-enforce-eager",
+                "--disable-custom-all-reduce"
+                if self.args.cot_disable_custom_all_reduce
+                else "--no-disable-custom-all-reduce",
+                "--cot-task-mode",
+                str(self.args.cot_task_mode),
+                "--cot-num-instructions",
+                str(self.args.cot_num_instructions),
+                "--cot-num-fewshot-examples",
+                str(self.args.cot_num_fewshot_examples),
+                "--cot-num-prompts-per-request",
+                str(self.args.cot_num_prompts_per_request),
+                "--cot-max-new-tokens",
+                str(self.args.cot_max_new_tokens),
+                "--cot-temperature",
+                str(self.args.cot_temperature),
+                "--cot-top-p",
+                str(self.args.cot_top_p),
+                "--instruction-num-instructions",
+                str(self.args.instruction_num_instructions),
+                "--instruction-num-fewshot-examples",
+                str(self.args.instruction_num_fewshot_examples),
+                "--instruction-max-new-tokens",
+                str(self.args.instruction_max_new_tokens),
+                "--instruction-temperature",
+                str(self.args.instruction_temperature),
+                "--instruction-top-p",
+                str(self.args.instruction_top_p),
+                "--consistency-k",
+                str(self.args.consistency_k),
+                "--consistency-max-new-tokens",
+                str(self.args.consistency_max_new_tokens),
+                "--consistency-temperature",
+                str(self.args.consistency_temperature),
+                "--consistency-top-p",
+                str(self.args.consistency_top_p),
+                "--consistency-min-vote-ratio",
+                str(self.args.consistency_min_vote_ratio),
+                "--rip-num-responses",
+                str(self.args.rip_num_responses),
+                "--rip-response-max-new-tokens",
+                str(self.args.rip_response_max_new_tokens),
+                "--rip-response-temperature",
+                str(self.args.rip_response_temperature),
+                "--rip-response-top-p",
+                str(self.args.rip_response_top_p),
+                "--rip-score-max-new-tokens",
+                str(self.args.rip_score_max_new_tokens),
+                "--rip-min-score",
+                str(self.args.rip_min_score),
+                "--code-num-samples",
+                str(self.args.code_num_samples),
+                "--code-max-new-tokens",
+                str(self.args.code_max_new_tokens),
+                "--code-temperature",
+                str(self.args.code_temperature),
+                "--code-top-p",
+                str(self.args.code_top_p),
+                "--code-correct-threshold",
+                str(self.args.code_correct_threshold),
+            ]
+            cmd.append("--cot-do-sample" if self.args.cot_do_sample else "--no-cot-do-sample")
+            cmd.append(
+                "--instruction-do-sample"
+                if self.args.instruction_do_sample
+                else "--no-instruction-do-sample"
+            )
+            cmd.append(
+                "--consistency-do-sample"
+                if self.args.consistency_do_sample
+                else "--no-consistency-do-sample"
+            )
+            cmd.append(
+                "--rip-response-do-sample"
+                if self.args.rip_response_do_sample
+                else "--no-rip-response-do-sample"
+            )
+            cmd.append("--code-do-sample" if self.args.code_do_sample else "--no-code-do-sample")
+        else:
+            cmd = [
+                sys.executable,
+                str(DISTILL_METHOD_SCRIPTS[distill_method]),
+                "--dataset",
+                self.args.distill_dataset or self.args.dataset,
+                "--input-file",
+                distill_input,
+                "--output-file",
+                str(self.distill_output),
+                "--model-id",
+                self.args.teacher_model,
+                "--gpu-ids",
+                self.args.distill_gpu_ids or self.args.gpu_ids,
+                "--temperature",
+                str(self.args.teacher_temperature),
+                "--top-p",
+                str(self.args.teacher_top_p),
+                "--gen-batch-size",
+                str(self.args.teacher_batch_size),
+                "--max-new-tokens",
+                str(self.args.teacher_max_new_tokens),
+                "--tensor-parallel-size",
+                str(self.args.teacher_tensor_parallel_size),
+                "--gpu-memory-utilization",
+                str(self.args.teacher_gpu_memory_utilization),
+                "--correct-threshold",
+                str(self.args.teacher_correct_threshold),
+            ]
+            if distill_method != "self_instruct":
+                if self.args.teacher_enforce_eager:
+                    cmd.append("--enforce-eager")
+                else:
+                    cmd.append("--no-enforce-eager")
+                if self.args.teacher_disable_custom_all_reduce:
+                    cmd.append("--disable-custom-all-reduce")
+                else:
+                    cmd.append("--no-disable-custom-all-reduce")
+
         if distill_method == "teacher_correctness_filter":
             cmd += ["--num-cots", "1"]
         elif distill_method == "answer_augmentation":
@@ -494,11 +664,14 @@ class Pipeline:
             "question_rephrasing",
             "question_augmentation",
         }
-        if self.args.teacher_do_sample or (uses_teacher_num_samples and self.args.teacher_num_samples > 1):
+        if (
+            distill_method != "cot_self_instruct"
+            and (self.args.teacher_do_sample or (uses_teacher_num_samples and self.args.teacher_num_samples > 1))
+        ):
             cmd.append("--do-sample")
         if self.args.trust_remote_code:
             cmd.append("--trust-remote-code")
-        if self.args.disable_teacher_filter:
+        if self.args.disable_teacher_filter and distill_method != "cot_self_instruct":
             cmd.append("--disable-teacher-filter")
         if self.args.smoke_num_rows > 0:
             cmd += ["--smoke-num-rows", str(self.args.smoke_num_rows)]
@@ -552,6 +725,8 @@ class Pipeline:
             str(self.args.sft_epochs),
         ] + as_list(self.args.sft_arg)
         env = {"MODEL_NAME": self.eval_model_name("sft"), "DATA_NAME": self.args.dataset}
+        if getattr(self.args, "sft_resume_path", ""):
+            env["RESUME_PATH"] = self.args.sft_resume_path
         env.update(parse_env_pairs(self.args.sft_env))
         self.run_cmd("sft", cmd, env)
         self.results["sft_dir"] = str(self.sft_dir)
@@ -678,11 +853,52 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--teacher-gpu-memory-utilization", type=float, default=0.95)
     parser.add_argument("--teacher-correct-threshold", type=float, default=0.99)
     parser.add_argument("--teacher-do-sample", action="store_true")
+    parser.add_argument("--teacher-enforce-eager", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument(
+        "--teacher-disable-custom-all-reduce",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+    )
     parser.add_argument("--trust-remote-code", action="store_true")
     parser.add_argument("--disable-teacher-filter", action="store_true")
     parser.add_argument("--rephrase-max-new-tokens", type=int, default=512)
     parser.add_argument("--backward-question-max-new-tokens", type=int, default=1024)
     parser.add_argument("--consistency-max-new-tokens", type=int, default=1024)
+    parser.add_argument("--cot-task-mode", choices=["auto", "reasoning", "instruction", "code", "both", "all"], default="auto")
+    parser.add_argument("--consistency-k", type=int, default=16)
+    parser.add_argument("--consistency-temperature", type=float, default=0.6)
+    parser.add_argument("--consistency-top-p", type=float, default=0.95)
+    parser.add_argument("--consistency-do-sample", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--consistency-min-vote-ratio", type=float, default=0.5)
+    parser.add_argument("--cot-num-instructions", type=int, default=100)
+    parser.add_argument("--cot-num-fewshot-examples", type=int, default=2)
+    parser.add_argument("--cot-num-prompts-per-request", type=int, default=10)
+    parser.add_argument("--cot-max-new-tokens", type=int, default=2048)
+    parser.add_argument("--cot-temperature", type=float, default=0.7)
+    parser.add_argument("--cot-top-p", type=float, default=0.95)
+    parser.add_argument("--cot-do-sample", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--cot-max-model-len", type=int, default=8192)
+    parser.add_argument("--cot-enforce-eager", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--cot-disable-custom-all-reduce", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--instruction-num-instructions", type=int, default=100)
+    parser.add_argument("--instruction-num-fewshot-examples", type=int, default=2)
+    parser.add_argument("--instruction-max-new-tokens", type=int, default=2048)
+    parser.add_argument("--instruction-temperature", type=float, default=0.8)
+    parser.add_argument("--instruction-top-p", type=float, default=0.9)
+    parser.add_argument("--instruction-do-sample", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--rip-num-responses", type=int, default=32)
+    parser.add_argument("--rip-response-max-new-tokens", type=int, default=1024)
+    parser.add_argument("--rip-response-temperature", type=float, default=1.0)
+    parser.add_argument("--rip-response-top-p", type=float, default=1.0)
+    parser.add_argument("--rip-response-do-sample", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--rip-score-max-new-tokens", type=int, default=32)
+    parser.add_argument("--rip-min-score", type=int, default=4)
+    parser.add_argument("--code-num-samples", type=int, default=1)
+    parser.add_argument("--code-max-new-tokens", type=int, default=2048)
+    parser.add_argument("--code-temperature", type=float, default=0.7)
+    parser.add_argument("--code-top-p", type=float, default=0.95)
+    parser.add_argument("--code-do-sample", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--code-correct-threshold", type=float, default=1.0)
     parser.add_argument("--smoke-num-rows", type=int, default=0)
 
     # Metrics.
@@ -697,6 +913,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sft-val-data", default="")
     parser.add_argument("--sft-output-dir", default="")
     parser.add_argument("--sft-checkpoint", default="", help="Use an existing SFT checkpoint for eval/GRPO stages.")
+    parser.add_argument("--sft-resume-path", default="", help="Resume SFT training from a checkpoint directory.")
     parser.add_argument("--sft-gpu-ids", default="")
     parser.add_argument("--sft-epochs", type=int, default=1)
     parser.add_argument("--sft-arg", action="append", default=[], help="Extra Hydra arg for sft_dataobs.sh; repeatable.")

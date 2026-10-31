@@ -23,12 +23,14 @@ Heuristics: Data Augmentation 方法，参考 The Quest for Efficient Reasoning:
 - answer augmentation
 - reverse thinking augmentation
 
+注意一点：不开 do-sample 选项的话，vllm 会固定做 **确定性** 采样！temp 和 top p 参数就没用了！！
+
 使用的命令：（现在是 smoke 命令）
 - smoke 进度：
     - [x] question rephrasing
     - [x] answer aug
     - [x] question aug
-    - [-] reverse thinking
+    - [x] reverse thinking
  
 python DataObs/scripts/experiment_pipeline_vllm.py \
     --experiment-id test_smoke_gsm8k_question_rephrasing_qwen3_8b_n4 \
@@ -38,7 +40,7 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --output-dir /data/hrh/COT/experiments \
     --stages distill,metrics,sft,sft_eval \
     --distill-method question_rephrasing \
-    --gpu-ids 1 \
+    --gpu-ids 2 \
     --teacher-num-samples 4 \
     --teacher-temperature 0.7 \
     --teacher-top-p 0.95 \
@@ -53,7 +55,8 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --sft-arg data.train_batch_size=4 \
     --sft-arg data.micro_batch_size_per_gpu=2 \
     --sft-arg data.max_length=2048 \
-    --eval-batch-size 8
+    --eval-batch-size 8 \
+    --eval-gpu-memory-utilization 0.5
 
 python DataObs/scripts/experiment_pipeline_vllm.py \
     --experiment-id test_smoke_gsm8k_answer_augmentation_qwen3_8b_n4 \
@@ -63,7 +66,7 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --output-dir /data/hrh/COT/experiments \
     --stages distill,metrics,sft,sft_eval \
     --distill-method answer_augmentation \
-    --gpu-ids 0 \
+    --gpu-ids 2 \
     --teacher-num-samples 4 \
     --teacher-temperature 0.7 \
     --teacher-top-p 0.95 \
@@ -78,7 +81,8 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --sft-arg data.train_batch_size=4 \
     --sft-arg data.micro_batch_size_per_gpu=2 \
     --sft-arg data.max_length=2048 \
-    --eval-batch-size 8
+    --eval-batch-size 8 \
+    --eval-gpu-memory-utilization 0.5
 
 python DataObs/scripts/experiment_pipeline_vllm.py \
     --experiment-id test_smoke_gsm8k_question_augmentation_qwen3_8b_n4 \
@@ -88,7 +92,7 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --output-dir /data/hrh/COT/experiments \
     --stages distill,metrics,sft,sft_eval \
     --distill-method question_augmentation \
-    --gpu-ids 1 \
+    --gpu-ids 2 \
     --teacher-num-samples 4 \
     --teacher-temperature 0.7 \
     --teacher-top-p 0.95 \
@@ -103,7 +107,8 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --sft-arg data.train_batch_size=4 \
     --sft-arg data.micro_batch_size_per_gpu=2 \
     --sft-arg data.max_length=2048 \
-    --eval-batch-size 8
+    --eval-batch-size 8 \
+    --eval-gpu-memory-utilization 0.5
 
 python DataObs/scripts/experiment_pipeline_vllm.py \
     --experiment-id test_smoke_gsm8k_reverse_thinking_qwen3_8b_n1 \
@@ -113,7 +118,7 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --output-dir /data/hrh/COT/experiments \
     --stages distill,metrics,sft,sft_eval \
     --distill-method reverse_thinking \
-    --gpu-ids 0 \
+    --gpu-ids 2 \
     --teacher-num-samples 1 \
     --teacher-temperature 0.7 \
     --teacher-top-p 0.95 \
@@ -130,7 +135,8 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --sft-arg data.train_batch_size=4 \
     --sft-arg data.micro_batch_size_per_gpu=2 \
     --sft-arg data.max_length=3072 \
-    --eval-batch-size 8
+    --eval-batch-size 8 \
+    --eval-gpu-memory-utilization 0.5
 
 
 最终使用的参数参考这个：
@@ -163,7 +169,7 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --grpo-env LOG_PROB_MICRO_BATCH_SIZE_PER_GPU=8 \
     --grpo-env ROLLOUT_N=4 \
     --grpo-env MAX_PROMPT_LEN=512 \
-    --grpo-env MAX_RESPONSE_LEN=2048 \
+    --grpo-env MAX_RESPONSE_LEN=4096 \
     --grpo-env LR=5e-7 \
     --grpo-env KL_COEF=0.001 \
     --grpo-env GPU_MEMORY_UTILIZATION=0.6 \
@@ -175,4 +181,96 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
 
 Self Instruct
 
+```bash
+python DataObs/scripts/experiment_pipeline_vllm.py \
+    --experiment-id exp_self_instruct_mbpp_qwen3_4b_teacher14b_n4_sft_rl \
+    --dataset mbpp \
+    --base-model /home/hrh/data/pretrain_models/Qwen3-4B \
+    --teacher-model /home/hrh/data/pretrain_models/Qwen3-14B \
+    --output-dir /home/hrh/data/COT/experiments \
+    --stages distill,metrics,sft,sft_eval,grpo,grpo_eval \
+    --distill-method self_instruct \
+    --gpu-ids 6,7 \
+    --teacher-batch-size 8 \
+    --teacher-max-new-tokens 256 \
+    --teacher-tensor-parallel-size 2 \
+    --teacher-gpu-memory-utilization 0.65 \
+    --sft-epochs 1 \
+    --sft-arg data.train_batch_size=4 \
+    --sft-arg data.max_length=2048 \
+    --eval-batch-size 8 \
+    --eval-gpu-memory-utilization 0.5 \
+    --grpo-env TOTAL_EPOCHS=1 \
+    --grpo-env TRAIN_BATCH_SIZE=32 \
+    --grpo-env PPO_MINI_BATCH_SIZE=32 \
+    --grpo-env PPO_MICRO_BATCH_SIZE_PER_GPU=4 \
+    --grpo-env LOG_PROB_MICRO_BATCH_SIZE_PER_GPU=8 \
+    --grpo-env ROLLOUT_N=4 \
+    --grpo-env MAX_PROMPT_LEN=512 \
+    --grpo-env MAX_RESPONSE_LEN=4096 \
+    --grpo-env LR=5e-7 \
+    --grpo-env KL_COEF=0.001 \
+    --grpo-env GPU_MEMORY_UTILIZATION=0.6 \
+    --grpo-env VLLM_MAX_NUM_SEQS=64 \
+    --grpo-env VLLM_MAX_NUM_BATCHED_TOKENS=6144 \
+    --grpo-env SAVE_FREQ=10 \
+    --grpo-env TEST_FREQ=5 \
+    --sft-arg data.micro_batch_size_per_gpu=1 \
+    --sft-arg model.enable_gradient_checkpointing=true
+```
+
+更详细的脚本说明、参数说明和当前对齐状态见：`DataObs/baselines/self-instruct/README.md`
+
 CoT-Self-Instruct
+
+```bash
+python DataObs/scripts/experiment_pipeline_vllm.py \
+    --experiment-id exp_cot_self_instruct_gsm8k_qwen3_4b_teacher4b_sft_rl \
+    --dataset gsm8k \
+    --base-model /data2/pretrain_models/Qwen3-4B \
+    --teacher-model /data2/pretrain_models/Qwen3-4B \
+    --output-dir /home/hrh/data/COT/experiments \
+    --stages distill,metrics,sft,sft_eval,grpo,grpo_eval \
+    --distill-method cot_self_instruct \
+    --gpu-ids 5 \
+    --teacher-batch-size 1 \
+    --teacher-tensor-parallel-size 1 \
+    --teacher-gpu-memory-utilization 0.8 \
+    --cot-task-mode reasoning \
+    --cot-num-instructions 100 \
+    --cot-num-fewshot-examples 2 \
+    --cot-max-new-tokens 2048 \
+    --consistency-k 16 \
+    --consistency-max-new-tokens 1024 \
+    --consistency-temperature 0.6 \
+    --sft-epochs 1 \
+    --sft-arg data.train_batch_size=4 \
+    --sft-arg data.micro_batch_size_per_gpu=1 \
+    --sft-arg data.max_length=2048 \
+    --sft-arg model.enable_gradient_checkpointing=true \
+    --eval-batch-size 8 \
+    --eval-gpu-memory-utilization 0.7 \
+    --grpo-env TOTAL_EPOCHS=1 \
+    --grpo-env TRAIN_BATCH_SIZE=32 \
+    --grpo-env PPO_MINI_BATCH_SIZE=32 \
+    --grpo-env PPO_MICRO_BATCH_SIZE_PER_GPU=4 \
+    --grpo-env LOG_PROB_MICRO_BATCH_SIZE_PER_GPU=8 \
+    --grpo-env ROLLOUT_N=4 \
+    --grpo-env MAX_PROMPT_LEN=512 \
+    --grpo-env MAX_RESPONSE_LEN=4096 \
+    --grpo-env LR=5e-7 \
+    --grpo-env KL_COEF=0.001 \
+    --grpo-env GPU_MEMORY_UTILIZATION=0.6 \
+    --grpo-env VLLM_MAX_NUM_SEQS=64 \
+    --grpo-env VLLM_MAX_NUM_BATCHED_TOKENS=6144 \
+    --grpo-env SAVE_FREQ=10 \
+    --grpo-env TEST_FREQ=5
+```
+
+代码数据集说明：
+
+- `mbpp / mbpp+ / humaneval / humaneval+` 现在应走 `--cot-task-mode code`
+- 这条分支不再复用 `reasoning + answer-consistency`
+- 而是对齐 `self-instruct / Vanilla Distill` 的 `code_tests` 思路：
+  - 直接用代码 seed prompt 生成解答
+  - 再用测试用例过滤

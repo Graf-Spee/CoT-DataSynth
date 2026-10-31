@@ -19,6 +19,7 @@ TODO(zhangchi.usc1992)
 """
 
 import os
+from pathlib import Path
 
 os.environ["NCCL_DEBUG"] = "WARN"
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
@@ -41,6 +42,8 @@ from tqdm import tqdm
 from transformers import AutoConfig, AutoModelForCausalLM, PreTrainedModel
 
 import verl.utils.hdfs_io as hdfs_io
+from verl.utils.checkpoint.checkpoint_manager import find_latest_ckpt_path
+from verl.utils.checkpoint.fsdp_checkpoint_manager import FSDPCheckpointManager
 from verl.utils.dataset import SFTDataset
 from verl.utils.dataset.multiturn_sft_dataset import MultiTurnSFTDataset
 from verl.utils.debug import log_gpu_memory_usage
@@ -98,8 +101,9 @@ class FSDPSFTTrainer:
         self._build_dataloader(train_dataset, val_dataset)
         # build model
         self._build_model_optimizer()
+        self.resume_global_step = 0
+        self._load_resume_checkpoint()
 
-        # TODO: add checkpoint manager
         if self.device_mesh.get_rank() == 0:
             print(self.config)
         self.device_name = get_device_name()
@@ -142,7 +146,7 @@ class FSDPSFTTrainer:
             batch_size=config.data.train_batch_size,
             sampler=self.train_sampler,
             num_workers=8,
-            pin_memory=True,
+            pin_memory=False,
             drop_last=True,
         )
 
@@ -189,7 +193,7 @@ class FSDPSFTTrainer:
                 local_model_path,
                 config=config,
                 torch_dtype=torch_dtype,
-                attn_implementation="flash_attention_2",
+                attn_implementation="sdpa",
                 trust_remote_code=trust_remote_code,
             )
 
@@ -254,6 +258,7 @@ class FSDPSFTTrainer:
                 device_mesh=self.device_mesh,
                 forward_prefetch=False,
             )
+            logger.info(f"【After FSDP】embedding shape: {self.fsdp_model.get_input_embeddings().weight.shape}")
         elif fsdp_strategy == "ddp":
             from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -281,6 +286,7 @@ class FSDPSFTTrainer:
             apply_fsdp2(self.model, fsdp_kwargs, self.config.model.fsdp_config)
             fsdp2_load_full_state_dict(self.model, full_state, self.device_mesh, cpu_offload)
             self.fsdp_model = self.model
+            print(f"【After FSDP2 wrap】embedding shape: {self.fsdp_model.get_input_embeddings().weight.shape}, lm_head: {self.fsdp_model.lm_head.weight.shape if hasattr(self.fsdp_model, 'lm_head') else 'N/A'}")
         else:
             raise NotImplementedError(f"not implement {fsdp_strategy}")
 
@@ -297,6 +303,8 @@ class FSDPSFTTrainer:
 
         self.steps_per_epoch = len(self.train_dataloader)
         self.total_steps = self.steps_per_epoch * self.config.trainer.total_epochs
+        if self.config.trainer.total_training_steps is not None:
+            self.total_steps = min(self.total_steps, self.config.trainer.total_training_steps)
 
         if self.device_mesh.get_rank() == 0:
             print(f"Number of steps/epoch {self.steps_per_epoch}, number of epochs {self.config.trainer.total_epochs}, total number of steps {self.total_steps}")
@@ -310,15 +318,103 @@ class FSDPSFTTrainer:
         else:
             raise ValueError(f"Unknown lr scheduler: {self.config.optim.lr_scheduler}")
 
+        self.checkpoint_manager = FSDPCheckpointManager(
+            model=self.fsdp_model,
+            optimizer=self.optimizer,
+            lr_scheduler=self.lr_scheduler,
+            processing_class=self.tokenizer,
+            checkpoint_config=self.config.trainer,
+        )
+
+    @staticmethod
+    def _has_resume_state(path):
+        path = Path(path)
+        if not path.is_dir():
+            return False
+        names = [item.name for item in path.iterdir()]
+        return (
+            any(name.startswith("model_world_size_") for name in names)
+            and any(name.startswith("optim_world_size_") for name in names)
+            and any(name.startswith("extra_state_world_size_") for name in names)
+        )
+
+    def _find_resume_checkpoint(self, root_path):
+        root = Path(root_path)
+        if not root.exists():
+            return None
+
+        if root.name.startswith("global_step_") and self._has_resume_state(root):
+            return root
+
+        latest = find_latest_ckpt_path(str(root))
+        if latest is not None and self._has_resume_state(latest):
+            return Path(latest)
+
+        candidates = []
+        for item in root.glob("global_step_*"):
+            step = extract_step(str(item))
+            if step is None or not self._has_resume_state(item):
+                continue
+            candidates.append((step, item))
+        if not candidates:
+            return None
+        return sorted(candidates, key=lambda x: x[0])[-1][1]
+
+    def _load_resume_checkpoint(self):
+        resume_root = getattr(self.config.trainer, "resume_path", None)
+        search_root = Path(resume_root) if resume_root else Path(self.config.trainer.default_local_dir)
+        checkpoint = self._find_resume_checkpoint(search_root)
+        if checkpoint is None:
+            if self.device_mesh.get_rank() == 0 and resume_root:
+                print(f"[WARN] resume_path has no sharded checkpoint state yet: {search_root}")
+            return
+
+        if self.device_mesh.get_rank() == 0:
+            print(f"Resuming SFT from checkpoint: {checkpoint}")
+
+        self.checkpoint_manager.load_checkpoint(local_path=str(checkpoint), del_local_after_load=False)
+        self.resume_global_step = extract_step(str(checkpoint)) or 0
+
     def _compute_loss_and_backward(self, batch, do_backward=True):
         """Compute loss with optional sequence parallelism and remove padding features"""
         use_sp = self.use_remove_padding and self.config.ulysses_sequence_parallel_size > 1
 
+        # Debug batch structure
+        if not hasattr(self, '_batch_printed'):
+            print(f"【DEBUG】batch type: {type(batch)}")
+            print(f"【DEBUG】batch keys: {batch.keys()}")
+            print(f"【DEBUG】batch['input_ids'] type: {type(batch['input_ids'])}")
+            if hasattr(batch['input_ids'], 'batch'):
+                print(f"【DEBUG】batch['input_ids'].batch type: {type(batch['input_ids'].batch)}")
+                print(f"【DEBUG】batch['input_ids'].batch shape: {batch['input_ids'].batch.shape}")
+            self._batch_printed = True
+
+        # Handle DataProto if batch is wrapped
+        if hasattr(batch, 'batch'):
+            actual_batch = batch.batch
+        else:
+            actual_batch = batch
+
         # Move inputs to GPU and prepare loss mask
-        input_ids = batch["input_ids"].to(self.device_name)
-        attention_mask = batch["attention_mask"].to(self.device_name)
-        position_ids = batch["position_ids"].to(self.device_name)
-        loss_mask = batch.pop("loss_mask")[:, :-1].reshape(-1).to(self.device_name)
+        input_ids = actual_batch["input_ids"].to(self.device_name)
+
+        # Debug: check input_ids before max
+        if not hasattr(self, '_input_ids_printed'):
+            print(f"【DEBUG】input_ids shape: {input_ids.shape}, dtype: {input_ids.dtype}")
+            print(f"【DEBUG】input_ids[:2, :20]: {input_ids[:2, :20]}")
+            print(f"【DEBUG】input_ids is_contiguous: {input_ids.is_contiguous()}")
+            print(f"【DEBUG】input_ids device: {input_ids.device}")
+            # Try max with contiguous
+            if not input_ids.is_contiguous():
+                input_ids = input_ids.contiguous()
+                print(f"【DEBUG】Made input_ids contiguous")
+            max_id = input_ids.max().item()
+            print(f"【DEBUG】input_ids max after contiguous: {max_id}")
+            self._input_ids_printed = True
+
+        attention_mask = actual_batch["attention_mask"].to(self.device_name)
+        position_ids = actual_batch["position_ids"].to(self.device_name)
+        loss_mask = actual_batch.pop("loss_mask")[:, :-1].reshape(-1).to(self.device_name)
 
         use_liger = getattr(self.config.model, "use_liger", False)
         if use_liger:
@@ -336,6 +432,11 @@ class FSDPSFTTrainer:
         with context, torch.autocast(device_type=self.device_name, dtype=torch.bfloat16):
             if not use_sp:
                 # Standard forward pass without sequence parallel
+                max_id = input_ids.max().item()
+                min_id = input_ids.min().item()
+                if max_id >= self.model.get_input_embeddings().weight.shape[0]:
+                    print(f"【WARNING】input_ids max={max_id}, embedding size={self.model.get_input_embeddings().weight.shape[0]}")
+
                 labels = input_ids[:, 1:].contiguous()
                 output = self.fsdp_model(input_ids=input_ids, attention_mask=attention_mask, position_ids=position_ids, use_cache=False)
                 logits = output.logits
@@ -520,10 +621,22 @@ class FSDPSFTTrainer:
         else:
             raise NotImplementedError(f"not implement {fsdp_strategy}")
 
+        self.checkpoint_manager.save_checkpoint(
+            local_path=path,
+            hdfs_path=None,
+            global_step=step,
+            max_ckpt_to_keep=self.config.trainer.get("max_ckpt_to_keep", None),
+        )
+
         # Copy to HDFS if configured
         if self.device_mesh.get_rank() == 0 and self.config.trainer.default_hdfs_dir:
             hdfs_io.makedirs(self.config.trainer.default_hdfs_dir, exist_ok=True)
             hdfs_io.copy(src=path, dst=self.config.trainer.default_hdfs_dir, dirs_exist_ok=True)
+
+        if self.device_mesh.get_rank() == 0:
+            latest_path = os.path.join(self.config.trainer.default_local_dir, "latest_checkpointed_iteration.txt")
+            with open(latest_path, "w", encoding="utf-8") as f:
+                f.write(str(step))
 
         torch.distributed.barrier()
 
@@ -538,7 +651,7 @@ class FSDPSFTTrainer:
                 default_backend=self.config.trainer.logger,
             )
 
-        global_step = 0
+        global_step = self.resume_global_step
         last_valid_metric = None
         # compute the total training steps.
         # the total training steps in SFT is mainly for early exit
@@ -550,14 +663,27 @@ class FSDPSFTTrainer:
         self.total_training_steps = total_training_steps
         print(f"Total training steps: {self.total_training_steps}")
 
+        start_epoch = global_step // self.steps_per_epoch if self.steps_per_epoch > 0 else 0
+        start_offset = global_step % self.steps_per_epoch if self.steps_per_epoch > 0 else 0
+        if start_epoch >= self.config.trainer.total_epochs:
+            if rank == 0:
+                print(f"Resume step {global_step} already reaches total epochs, nothing to do.")
+            return
+
         # TODO (zhangchi.usc1992) add back checkpoint manager.
         # Currently, it blocks when uploading to hdfs. So very slow.
 
-        for epoch in range(self.config.trainer.total_epochs):
+        for epoch in range(start_epoch, self.config.trainer.total_epochs):
             self.train_sampler.set_epoch(epoch=epoch)
-            for data in tqdm(self.train_dataloader, total=self.steps_per_epoch, desc=f"Epoch {epoch + 1}/{self.config.trainer.total_epochs}", disable=rank != 0):
+            dataloader = iter(self.train_dataloader)
+            if epoch == start_epoch and start_offset > 0:
+                for _ in range(start_offset):
+                    next(dataloader, None)
+            remaining_steps = self.steps_per_epoch - (start_offset if epoch == start_epoch else 0)
+            for data in tqdm(dataloader, total=remaining_steps, desc=f"Epoch {epoch + 1}/{self.config.trainer.total_epochs}", disable=rank != 0):
                 global_step += 1
-                data = TensorDict(data, batch_size=self.config.data.train_batch_size).to(self.device_name)
+                data = {k: v.to(self.device_name) for k, v in data.items()}
+                data = TensorDict(data, batch_size=data["input_ids"].shape[0])
                 metric = self.training_step(data)
                 if rank == 0:
                     tracking.log(data=metric, step=global_step)
@@ -571,7 +697,8 @@ class FSDPSFTTrainer:
                     # Perform validation
                     val_losses = []
                     for val_data in self.val_dataloader:
-                        val_data = TensorDict(val_data, batch_size=self.config.data.micro_batch_size_per_gpu).to(self.device_name)
+                        val_data = {k: v.to(self.device_name) for k, v in val_data.items()}
+                        val_data = TensorDict(val_data, batch_size=val_data["input_ids"].shape[0])
                         val_loss = self.validation_step(val_data)
                         val_losses.append(val_loss)
                     if rank == 0:
@@ -602,6 +729,16 @@ def run_sft(config):
 
     local_model_path = copy_to_local(src=config.model.partial_pretrain, verbose=True)
     tokenizer = hf_tokenizer(local_model_path, trust_remote_code=config.model.trust_remote_code)
+
+    # ============新增强制校验打印===========
+    if rank == 0:
+        print("=" * 60)
+        print(f"【CRITICAL SFT TOKENIZER INFO】")
+        print(f"Tokenizer loaded from path: {tokenizer.name_or_path}")
+        print(f"Tokenizer vocab_size: {tokenizer.vocab_size}")
+        print("=" * 60)
+    # =======================================
+
     train_dataset = create_sft_dataset(config.data.train_files, config.data, tokenizer)
     val_dataset = create_sft_dataset(config.data.val_files, config.data, tokenizer)
 

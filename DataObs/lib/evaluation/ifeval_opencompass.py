@@ -74,10 +74,22 @@ def _input_from_reference(reference: dict[str, Any]) -> InputExample:
     )
 
 
+def _get_instruction_cls(instruction_id: str):
+    """Resolve IFEval instruction ids with or without the English `en:` prefix."""
+    instruction_cls = instructions_registry.INSTRUCTION_DICT.get(instruction_id)
+    if instruction_cls is not None:
+        return instruction_cls
+    if not instruction_id.startswith("en:"):
+        instruction_cls = instructions_registry.INSTRUCTION_DICT.get(f"en:{instruction_id}")
+        if instruction_cls is not None:
+            return instruction_cls
+    raise KeyError(instruction_id)
+
+
 def _test_instruction_following_strict(inp: InputExample, response: str) -> OutputExample:
     is_following_list = []
     for index, instruction_id in enumerate(inp.instruction_id_list):
-        instruction_cls = instructions_registry.INSTRUCTION_DICT[instruction_id]
+        instruction_cls = _get_instruction_cls(instruction_id)
         instruction = instruction_cls(instruction_id)
         instruction.build_description(**inp.kwargs[index])
         args = instruction.get_instruction_args()
@@ -120,7 +132,7 @@ def _test_instruction_following_loose(inp: InputExample, response: str) -> Outpu
 
     is_following_list = []
     for index, instruction_id in enumerate(inp.instruction_id_list):
-        instruction_cls = instructions_registry.INSTRUCTION_DICT[instruction_id]
+        instruction_cls = _get_instruction_cls(instruction_id)
         instruction = instruction_cls(instruction_id)
         instruction.build_description(**inp.kwargs[index])
         args = instruction.get_instruction_args()

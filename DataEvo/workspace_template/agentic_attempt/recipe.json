@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "attempt_id": "a0000",
+  "parent_attempt_id": null,
+  "hypothesis": "Use verifier-passing terminal trajectories as a baseline before changing synthesis diversity and difficulty.",
+  "generation": {
+    "backend": "program",
+    "entrypoint": "synthesize.py",
+    "max_tasks": 16,
+    "samples_per_task": 2,
+    "guidance": "Inspect the environment before editing files. Check your work before finishing.",
+    "sampling": {"temperature": 0.7, "max_tokens": 512}
+  },
+  "postprocess": {"entrypoint": "postprocess.py"}
+}

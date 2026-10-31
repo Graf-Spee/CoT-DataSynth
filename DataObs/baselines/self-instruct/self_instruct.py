@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import time
+from pathlib import Path
 try:
     from .bootstrap_instructions import bootstrap_instructions
     from .common import load_seed_tasks, write_outputs
@@ -20,9 +22,46 @@ except ImportError:
 def run(args: argparse.Namespace) -> None:
     start_time = time.time()
     seed_tasks = load_seed_tasks(args.input_file, args.smoke_num_rows)
-    bootstrapped_instructions = bootstrap_instructions(seed_tasks, args)
-    classified_instructions = identify_clf_or_not(bootstrapped_instructions, args)
-    generated_items = generate_instances(classified_instructions, args)
+    state_path = Path(args.resume_state) if args.resume_state else Path(f"{args.output_file}.distill_state.json")
+    state: dict = {}
+
+    if state_path.is_file():
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        if state.get("dataset") != args.dataset or state.get("input_file") != args.input_file:
+            raise SystemExit(f"[ERROR] Distill state belongs to a different dataset or input file: {state_path}")
+        print(f"[INFO] Resuming distill state from: {state_path}")
+
+    def save_state() -> None:
+        state["dataset"] = args.dataset
+        state["input_file"] = args.input_file
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = Path(f"{state_path}.tmp")
+        temporary_path.write_text(json.dumps(state, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        temporary_path.replace(state_path)
+        print(f"[INFO] Saved distill state: {state_path}")
+
+    if state.get("completed") and Path(args.output_file).is_file():
+        print(f"[INFO] Distill output already complete: {args.output_file}")
+        return
+
+    bootstrapped_instructions = state.get("bootstrapped_instructions")
+    if bootstrapped_instructions is None:
+        bootstrapped_instructions = bootstrap_instructions(seed_tasks, args)
+        state["bootstrapped_instructions"] = bootstrapped_instructions
+        save_state()
+
+    classified_instructions = state.get("classified_instructions")
+    if classified_instructions is None:
+        classified_instructions = identify_clf_or_not(bootstrapped_instructions, args)
+        state["classified_instructions"] = classified_instructions
+        save_state()
+
+    generated_items = state.get("generated_items")
+    if generated_items is None:
+        generated_items = generate_instances(classified_instructions, args)
+        state["generated_items"] = generated_items
+        save_state()
+
     sft_rows = prepare_for_finetuning(generated_items, args.dataset)
 
     print(f"Loaded seed tasks: {len(seed_tasks)}")
@@ -45,6 +84,8 @@ def run(args: argparse.Namespace) -> None:
         classified_instruction_count=len(classified_instructions),
         elapsed_sec=time.time() - start_time,
     )
+    state["completed"] = True
+    save_state()
     print(f"Wrote output to: {args.output_file}")
 
 
@@ -53,6 +94,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--input-file", required=True)
     parser.add_argument("--output-file", required=True)
+    parser.add_argument("--resume-state", default="", help="Path to a resumable distill state file.")
     parser.add_argument("--model-id", required=True)
     parser.add_argument("--gpu-ids", default="0")
     parser.add_argument("--temperature", type=float, default=0.7)

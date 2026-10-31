@@ -49,17 +49,17 @@ python DataObs/lib/evaluation/eval_vllm.py \
 
 | Dataset | Reward function | 默认 eval data |
 |---|---|---|
-| `arc-challenge` | `verl/utils/reward_score/multiple_choice.py` | `/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet` |
-| `aqua_rat` | `verl/utils/reward_score/multiple_choice.py` | `/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet` |
-| `commonsenseQA` | `verl/utils/reward_score/multiple_choice.py` | `/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet` |
-| `gsm8k` | `verl/utils/reward_score/gsm8k.py` | `/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet` |
-| `humaneval` | `verl/utils/reward_score/mbpp.py` | `/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet` |
-| `humanevalplus` | `verl/utils/reward_score/mbpp.py` | `/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet` |
-| `math-500` | `verl/utils/reward_score/math_verify.py` | `/data/open_datasets/MATH-500/test.parquet` |
-| `mbpp` | `verl/utils/reward_score/mbpp.py` | `/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet` |
-| `mbppplus` | `verl/utils/reward_score/mbpp.py` | `/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet` |
-| `numinamath` | `verl/utils/reward_score/math_verify.py` | `/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet` |
-| `strategyQA` | `verl/utils/reward_score/truefalse.py` | `/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet` |
+| `arc-challenge` | `verl/utils/reward_score/multiple_choice.py` | `/home/hrh/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet` |
+| `aqua_rat` | `verl/utils/reward_score/multiple_choice.py` | `/home/hrh/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet` |
+| `commonsenseQA` | `verl/utils/reward_score/multiple_choice.py` | `/home/hrh/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet` |
+| `gsm8k` | `verl/utils/reward_score/gsm8k.py` | `/home/hrh/open_datasets/GSM8K/main/test-00000-of-00001.parquet` |
+| `humaneval` | `verl/utils/reward_score/mbpp.py` | `/home/hrh/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet` |
+| `humanevalplus` | `verl/utils/reward_score/mbpp.py` | `/home/hrh/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet` |
+| `math-500` | `verl/utils/reward_score/math_verify.py` | `/home/hrh/open_datasets/MATH-500/test.parquet` |
+| `mbpp` | `verl/utils/reward_score/mbpp.py` | `/home/hrh/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet` |
+| `mbppplus` | `verl/utils/reward_score/mbpp.py` | `/home/hrh/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet` |
+| `numinamath` | `verl/utils/reward_score/math_verify.py` | `/home/hrh/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet` |
+| `strategyQA` | `verl/utils/reward_score/truefalse.py` | `/home/hrh/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet` |
 
 容易混淆的点：
 
@@ -93,7 +93,7 @@ data_source: dataset name
 假设我们要加 SVAMP，原始 parquet 路径为：
 
 ```text
-/data/open_datasets/SVAMP/test.parquet
+/home/hrh/open_datasets/SVAMP/test.parquet
 ```
 
 假设原始 schema 是：
@@ -245,7 +245,7 @@ DATASET_CONFIG: dict[str, dict[str, Any]] = {
     ...
     "svamp": {
         "reward": "verl/utils/reward_score/svamp.py",
-        "eval_data": "/data/open_datasets/SVAMP/test.parquet",
+        "eval_data": "/home/hrh/open_datasets/SVAMP/test.parquet",
     },
 }
 ```
@@ -277,7 +277,7 @@ mapping = {
 ```bash
 python DataObs/lib/evaluation/prepare_eval_data.py \
   --dataset svamp \
-  --input /data/open_datasets/SVAMP/test.parquet \
+  --input /home/hrh/open_datasets/SVAMP/test.parquet \
   --output /tmp/svamp_prepared.parquet \
   --method zeroshot
 ```

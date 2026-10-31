@@ -1,12 +1,43 @@
 # DataEvo
 
+The autonomous Codex experiment runtime is available at
+[`scripts/run_session.py`](scripts/run_session.py). It freezes synthesis code,
+runs the existing **DataObs SFT → evaluation → GRPO → evaluation** pipeline,
+collects probes/curves/costs, and gives feedback to the next `codex exec` decision.
+Built-in profiles cover GSM8K and Linux terminal agents. The terminal profile
+connects on-policy async vLLM rollout to persistent Harbor/E2B environments,
+verifier rewards and the existing GRPO trainer. See the
+[agentic adapter guide (中文)](docs/agentic_runtime.md) for protocol, setup,
+RSIBench comparison and the current dependency/GPU verification limits.
+
+See [implementation and startup guide (中文)](docs/autonomous_runtime.md) for
+Codex authentication, API/GPU configuration, fixed interfaces, recovery and
+the current verification limits.
+
+The sections below describe the **legacy rule-based DataEvo loop**, which is a
+separate entry point from the autonomous runtime.
+
+For the completed two-round GSM8K GPU experiment, see the
+[actual code, configuration, commands and results (中文)](docs/gsm8k_two_rounds_runbook.md).
+
+For available RSIBench task sets, examples and the proposed agentic RL scope,
+see the [dataset review (中文)](docs/agentic_datasets_review.md) and
+[`scripts/preview_agentic_datasets.py`](scripts/preview_agentic_datasets.py).
+
+For standalone **Terminal-Bench 2.0 (89 tasks) + SWE-bench Verified (RSIBench's
+100-task subset)** evaluation, use
+[`scripts/evaluate_agentic_benchmarks.py`](scripts/evaluate_agentic_benchmarks.py).
+See the [evaluation runbook (中文)](docs/agentic_benchmark_eval.md) for model serving,
+E2B/Docker preflight, smoke/full runs, native/DataEvo agent profiles and result files.
+This entry point does not launch training.
+
 `DataEvo` implements Training Dynamics Guided Data Optimization: a closed loop over
 data generation, model training, training dynamics analysis, and data generation
 strategy updates.
 
-The code is copied and adapted from `DataObs` without modifying the original
-directory. The inner per-round pipeline stays aligned with
-`DataObs/scripts/experiment_pipeline_vllm.py`; the outer loop is new.
+The legacy code was copied and adapted from `DataObs`. The new autonomous
+runtime calls `DataObs/scripts/experiment_pipeline_vllm.py` directly to avoid
+depending on a second copied training pipeline.
 
 ## Closed Loop
 

@@ -164,29 +164,29 @@ step 3 会继续把它补成类似：
 
 ```bash
 python DataObs/scripts/experiment_pipeline_vllm.py \
-    --experiment-id exp_self_instruct_gsm8k_qwen3_4b_full \
-    --dataset gsm8k \
-    --base-model /home/hrh/data/pretrain_models/Qwen3-4B \
-    --teacher-model /home/hrh/data/pretrain_models/Qwen3-4B \
+    --experiment-id exp_self_instruct_humanevalplus_qwen3_4b_full \
+    --dataset humanevalplus  \
+    --base-model /data2/pretrain_models/Qwen3-4B \
+    --teacher-model /data2/pretrain_models/Qwen3-14B \
     --output-dir /home/hrh/data/COT/experiments \
     --stages distill,metrics,sft,sft_eval,grpo,grpo_eval \
     --distill-method self_instruct \
-    --gpu-ids 6 \
+    --gpu-ids 6,7 \
     --teacher-batch-size 1 \
     --teacher-max-new-tokens 256 \
-    --teacher-tensor-parallel-size 1 \
+    --teacher-tensor-parallel-size 2 \
     --teacher-gpu-memory-utilization 0.8 \
-    --bootstrap-num-instructions 100 \
     --sft-epochs 1 \
     --sft-arg data.train_batch_size=4 \
     --sft-arg data.micro_batch_size_per_gpu=2 \
     --sft-arg data.max_length=2048 \
+    --sft-resume-path /home/hrh/data/exp_self_instruct_humanevalplus_qwen3_4b_full/sft \
     --eval-batch-size 8 \
     --eval-gpu-memory-utilization 0.5 \
     --grpo-env TOTAL_EPOCHS=1 \
     --grpo-env TRAIN_BATCH_SIZE=32 \
     --grpo-env PPO_MINI_BATCH_SIZE=32 \
-    --grpo-env PPO_MICRO_BATCH_SIZE_PER_GPU=4 \
+    --grpo-env PPO_MICRO_BATCH_SIZE_PER_GPU=2 \
     --grpo-env LOG_PROB_MICRO_BATCH_SIZE_PER_GPU=8 \
     --grpo-env ROLLOUT_N=4 \
     --grpo-env MAX_PROMPT_LEN=512 \
@@ -197,8 +197,15 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
     --grpo-env VLLM_MAX_NUM_SEQS=64 \
     --grpo-env VLLM_MAX_NUM_BATCHED_TOKENS=6144 \
     --grpo-env SAVE_FREQ=10 \
-    --grpo-env TEST_FREQ=5
+    --grpo-env TEST_FREQ=5 \
+    --rl-train-from-distill-kept
 ```
+
+`--rl-train-from-distill-kept` 对 `self_instruct` 有单独语义：这些样本是新生成的
+instruction/answer，没有原 benchmark 的测试用例。pipeline 会把保留的 teacher answer 写入
+`reward_model.ground_truth`，并使用 `data_source=self_instruct` 的 token-F1 参考相似度作为
+GRPO 训练奖励。这是继续蒸馏/模仿奖励，不是 HumanEval+ correctness；`grpo_eval` 仍使用
+HumanEval+ 的代码执行测试。
 
 如果只是先检查 baseline 本身有没有接通，再把 `--stages` 改成 `distill`，并加上 `--smoke-num-rows 5` 会更稳。
 
@@ -359,7 +366,7 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
 
 ### 作为 baseline 时，最值得先盯住的两个规模参数
 
-如果你后面要在 `/home/hrh/data/open_datasets` 上批量跑，最值得先看的通常是这两个：
+如果你后面要在 `/home/hrh/home/hrh/open_datasets` 上批量跑，最值得先看的通常是这两个：
 
 - `--bootstrap-num-instructions`
   - step 1 最终想保留多少条 instruction
@@ -504,4 +511,3 @@ python DataObs/scripts/experiment_pipeline_vllm.py \
 ### `__init__.py`
 
 只是一个包标记文件，本身没有业务逻辑。
-

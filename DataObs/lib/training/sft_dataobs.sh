@@ -82,12 +82,13 @@ data.prompt_key=question \
 data.response_key=answer \
 data.micro_batch_size_per_gpu=2 \
 data.max_length=16384 \
+data.truncation=right \
 data.train_batch_size=8 \
 optim.lr=5e-6 \
 model.partial_pretrain=${MODEL_ID} \
 model.trust_remote_code=true \
 model.enable_gradient_checkpointing=false \
-model.use_liger=true \
+model.use_liger=false \
 model.fsdp_config.model_dtype=bf16 \
 trainer.default_local_dir=${SAVE_PATH} \
 trainer.project_name=${DATA_NAME}-sft \
@@ -97,6 +98,11 @@ trainer.logger=["console","wandb"] \
 trainer.save_freq=10000 \
 trainer.test_freq=10000 \
 trainer.default_hdfs_dir=null"
+
+if [ -n "${RESUME_PATH:-}" ]; then
+    SFT_ARGS="${SFT_ARGS} \
+trainer.resume_path=${RESUME_PATH}"
+fi
 
 SFT_ARGS="${SFT_ARGS} \
 ulysses_sequence_parallel_size=${ulysses_sequence_parallel_size} \
@@ -112,10 +118,11 @@ use_remove_padding=true "
 # +data.response_dict_keys=['content'] "
 
 SFT_ARGS="${SFT_ARGS} \
-model.lora_rank=8 \
+model.lora_rank=0 \
 model.lora_alpha=16 "
 
-torchrun --standalone --nnodes=1 --nproc_per_node=$nproc_per_node \
+torchrun_bin="${TORCHRUN:-torchrun}"
+${torchrun_bin} --standalone --nnodes=1 --nproc_per_node=$nproc_per_node \
      -m verl.trainer.fsdp_sft_trainer \
      --config-path=${CONFIG_DIR} \
      --config-name=sft_trainer \

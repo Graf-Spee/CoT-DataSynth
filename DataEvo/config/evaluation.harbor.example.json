@@ -1,0 +1,16 @@
+{
+  "backend": "harbor",
+  "dataset": "/absolute/path/to/terminal-dev-tasks",
+  "probe_dataset": "/absolute/path/to/terminal-probe-tasks",
+  "final_dataset": "/absolute/path/to/terminal-final-tasks",
+  "agent": "terminus-2",
+  "environment": "e2b",
+  "public_base_url_env": "STUDENT_PUBLIC_BASE_URL",
+  "port": 18080,
+  "n_tasks": 20,
+  "concurrency": 2,
+  "max_turns": 100,
+  "max_tokens": 4096,
+  "context_window": 32768,
+  "startup_timeout_s": 600
+}

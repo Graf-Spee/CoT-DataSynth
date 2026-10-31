@@ -1,0 +1,3 @@
+Solve the following mathematics problem carefully. Show a clear solution and end with "#### <numeric answer>".
+
+{question}

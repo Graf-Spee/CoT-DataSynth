@@ -123,6 +123,9 @@ class PipelineVLLM(Pipeline):
             "--prompt-template-method", self.args.eval_prompt_template_method,
         ]
 
+        if self.args.eval_data:
+            cmd += ["--eval-data", self.args.eval_data]
+
         if self.args.eval_max_samples > 0:
             cmd += ["--max-samples", str(self.args.eval_max_samples)]
 
@@ -206,6 +209,9 @@ class PipelineVLLM(Pipeline):
             "--prompt-template-method", self.args.eval_prompt_template_method,
         ]
 
+        if self.args.eval_data:
+            cmd += ["--eval-data", self.args.eval_data]
+
         if self.args.eval_max_samples > 0:
             cmd += ["--max-samples", str(self.args.eval_max_samples)]
 
@@ -252,11 +258,52 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--teacher-gpu-memory-utilization", type=float, default=0.95)
     parser.add_argument("--teacher-correct-threshold", type=float, default=0.99)
     parser.add_argument("--teacher-do-sample", action="store_true")
+    parser.add_argument("--teacher-enforce-eager", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument(
+        "--teacher-disable-custom-all-reduce",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+    )
     parser.add_argument("--trust-remote-code", action="store_true")
     parser.add_argument("--disable-teacher-filter", action="store_true")
     parser.add_argument("--rephrase-max-new-tokens", type=int, default=512)
     parser.add_argument("--backward-question-max-new-tokens", type=int, default=1024)
     parser.add_argument("--consistency-max-new-tokens", type=int, default=1024)
+    parser.add_argument("--cot-task-mode", choices=["auto", "reasoning", "instruction", "code", "both", "all"], default="auto")
+    parser.add_argument("--consistency-k", type=int, default=16)
+    parser.add_argument("--consistency-temperature", type=float, default=0.6)
+    parser.add_argument("--consistency-top-p", type=float, default=0.95)
+    parser.add_argument("--consistency-do-sample", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--consistency-min-vote-ratio", type=float, default=0.5)
+    parser.add_argument("--cot-num-instructions", type=int, default=100)
+    parser.add_argument("--cot-num-fewshot-examples", type=int, default=2)
+    parser.add_argument("--cot-num-prompts-per-request", type=int, default=10)
+    parser.add_argument("--cot-max-new-tokens", type=int, default=2048)
+    parser.add_argument("--cot-temperature", type=float, default=0.7)
+    parser.add_argument("--cot-top-p", type=float, default=0.95)
+    parser.add_argument("--cot-do-sample", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--cot-max-model-len", type=int, default=8192)
+    parser.add_argument("--cot-enforce-eager", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--cot-disable-custom-all-reduce", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--instruction-num-instructions", type=int, default=100)
+    parser.add_argument("--instruction-num-fewshot-examples", type=int, default=2)
+    parser.add_argument("--instruction-max-new-tokens", type=int, default=2048)
+    parser.add_argument("--instruction-temperature", type=float, default=0.8)
+    parser.add_argument("--instruction-top-p", type=float, default=0.9)
+    parser.add_argument("--instruction-do-sample", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--rip-num-responses", type=int, default=32)
+    parser.add_argument("--rip-response-max-new-tokens", type=int, default=1024)
+    parser.add_argument("--rip-response-temperature", type=float, default=1.0)
+    parser.add_argument("--rip-response-top-p", type=float, default=1.0)
+    parser.add_argument("--rip-response-do-sample", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--rip-score-max-new-tokens", type=int, default=32)
+    parser.add_argument("--rip-min-score", type=int, default=4)
+    parser.add_argument("--code-num-samples", type=int, default=1)
+    parser.add_argument("--code-max-new-tokens", type=int, default=2048)
+    parser.add_argument("--code-temperature", type=float, default=0.7)
+    parser.add_argument("--code-top-p", type=float, default=0.95)
+    parser.add_argument("--code-do-sample", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--code-correct-threshold", type=float, default=1.0)
     parser.add_argument("--smoke-num-rows", type=int, default=0)
 
     # Metrics
@@ -271,6 +318,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sft-val-data", default="")
     parser.add_argument("--sft-output-dir", default="")
     parser.add_argument("--sft-checkpoint", default="")
+    parser.add_argument("--sft-resume-path", default="")
     parser.add_argument("--sft-gpu-ids", default="")
     parser.add_argument("--sft-epochs", type=int, default=1)
     parser.add_argument("--sft-arg", action="append", default=[])
@@ -278,6 +326,7 @@ def parse_args() -> argparse.Namespace:
 
     # Eval (vLLM-specific)
     parser.add_argument("--eval-gpu-ids", default="")
+    parser.add_argument("--eval-data", default="", help="Override the evaluation data path for vLLM SFT and GRPO evaluation.")
     parser.add_argument("--sft-eval-output-dir", default="")
     parser.add_argument("--grpo-eval-output-dir", default="")
     parser.add_argument("--eval-arg", action="append", default=[])

@@ -190,8 +190,17 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
     ):
         from torch import optim
         from torch.distributed.fsdp import CPUOffload, MixedPrecision
-        from transformers import AutoConfig, AutoModelForCausalLM, AutoModelForVision2Seq
+        #from transformers import AutoConfig, AutoModelForCausalLM, AutoModelForVision2Seq
+        from transformers import AutoConfig, AutoModelForCausalLM
 
+        try:
+            from transformers import AutoModelForVision2Seq
+        except ImportError:
+            try:
+                from transformers import AutoModelForImageTextToText as AutoModelForVision2Seq
+            except ImportError:
+                AutoModelForVision2Seq = None
+        
         from verl.utils.model import get_generation_config, print_model_size, update_model_config
         from verl.utils.torch_dtypes import PrecisionType
 

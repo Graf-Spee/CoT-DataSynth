@@ -476,7 +476,7 @@ TODO：
 cd /home/hrh/CoT-DataSynth
 python DataObs/lib/data_process/cot_distill_teacher_filter.py \
   --dataset commonsenseqa \
-  --input-file /data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet \
+  --input-file /home/hrh/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet \
   --output-file /tmp/csqa_distill_smoke.parquet \
   --model-id /path/to/teacher \
   --gpu-ids 0 \

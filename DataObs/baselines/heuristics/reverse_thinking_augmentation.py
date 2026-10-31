@@ -266,6 +266,11 @@ def run(args: argparse.Namespace) -> None:
     summary["num_consistent_quadruplets"] = sum(1 for row in candidate_rows if row["is_consistent"])
     summary["num_forward_passed"] = sum(1 for row in candidate_rows if row["forward_filter_passed"])
     summary["output_rows_per_kept_quadruplet"] = 3
+    summary["kept_rate"] = (
+        len(output_rows) / summary["output_rows_per_kept_quadruplet"] / len(candidate_rows)
+        if candidate_rows
+        else 0.0
+    )
     write_outputs(output_file=args.output_file, output_rows=output_rows, candidate_rows=candidate_rows, summary=summary)
 
     del teacher
