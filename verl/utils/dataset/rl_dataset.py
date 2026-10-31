@@ -115,6 +115,7 @@ class RLHFDataset(Dataset):
         self.need_tools_kwargs = config.get("need_tools_kwargs", False)
         self.filter_prompts = config.get("filter_prompts", True)
         self.serialize_dataset = False
+        self.chat_template_kwargs = dict(config.get("apply_chat_template_kwargs", {}))
         self.processor_type = self.processor.image_processor.__class__.__name__ if self.processor is not None else None
         if self.processor_type == "MiniCPMVImageProcessor":
             from verl.utils.dataset.vision_utils import init_minicpmo_config
@@ -163,7 +164,8 @@ class RLHFDataset(Dataset):
             else:
 
                 def doc2len(doc) -> int:
-                    return len(tokenizer.apply_chat_template(doc[prompt_key], add_generation_prompt=True))
+                    return len(tokenizer.apply_chat_template(doc[prompt_key], add_generation_prompt=True,
+                                                             return_dict=False, **self.chat_template_kwargs))
 
             self.dataframe = self.dataframe.filter(
                 lambda doc: doc2len(doc) <= self.max_prompt_length,
@@ -254,7 +256,8 @@ class RLHFDataset(Dataset):
             row_dict["multi_modal_inputs"].pop("second_per_grid_ts", None)
 
         else:
-            raw_prompt = self.tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+            raw_prompt = self.tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False,
+                                                           **self.chat_template_kwargs)
             model_inputs = self.tokenizer(raw_prompt, return_tensors="pt", add_special_tokens=False)
             input_ids = model_inputs.pop("input_ids")
             attention_mask = model_inputs.pop("attention_mask")

@@ -20,7 +20,7 @@ def compute_score_router(data_source, solution_str, ground_truth, extra_info=Non
     elif data_source in ["math", "math-500", "numinamath"]:
         from verl.utils.reward_score import math_verify
         res = math_verify.compute_score(solution_str, ground_truth)
-    elif data_source in ["aqua_rat", "ai2_arc", "arc-challenge", "commonsenseQA"]:
+    elif data_source in ["aqua_rat", "ai2_arc", "arc-challenge", "commonsenseqa","arc_challenge"]:
         from verl.utils.reward_score import multiple_choice
         res = multiple_choice.compute_score(solution_str, ground_truth)
     elif data_source in ["strategyQA", "strategyqa"]:
@@ -29,6 +29,9 @@ def compute_score_router(data_source, solution_str, ground_truth, extra_info=Non
     elif data_source in ["mbpp", "mbppplus", "humaneval", "humanevalplus", "livecodebench"]:
         from verl.utils.reward_score import mbpp
         res = mbpp.compute_score(solution_str, ground_truth)
+    elif data_source == "self_instruct":
+        from verl.utils.reward_score import self_instruct
+        res = self_instruct.compute_score(solution_str, ground_truth)
     else:
         raise NotImplementedError(f"Reward function is not implemented for {data_source=}")
 

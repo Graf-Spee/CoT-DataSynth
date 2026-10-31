@@ -262,6 +262,16 @@ class FSDPVLLMShardingManager(BaseShardingManager):
                     peft_config=asdict(peft_config),
                     lora_tensors=updated_params,
                 )
+                logger.warning(
+                    "[LoRA debug] %s",
+                    {
+                        k: {
+                            "shape": tuple(v.shape) if hasattr(v, "shape") else None,
+                            "dtype": str(v.dtype) if hasattr(v, "dtype") else None,
+                        }
+                        for k, v in updated_params.items()
+                    },
+                )
                 self.inference_engine.llm_engine.add_lora(lora_reqest)
                 logger.info(f"vLLM load weights, loaded_params: {len(updated_params)}")
                 return

@@ -55,7 +55,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "arc-challenge",
         ("arc-challenge", "ai2_arc", "ai2-arc"),
-        "/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
+        "/home/hrh/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
         "verl/utils/reward_score/multiple_choice.py",
         "compute_score",
         True,
@@ -65,7 +65,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "aqua_rat",
         ("aqua_rat", "aqua-rat"),
-        "/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
+        "/home/hrh/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
         "verl/utils/reward_score/multiple_choice.py",
         "compute_score",
         True,
@@ -75,7 +75,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "commonsenseQA",
         ("commonsenseQA",),
-        "/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
+        "/home/hrh/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
         "verl/utils/reward_score/multiple_choice.py",
         "compute_score",
         True,
@@ -85,7 +85,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "gsm8k",
         ("gsm8k",),
-        "/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
+        "/home/hrh/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
         "verl/utils/reward_score/gsm8k.py",
         "compute_score",
         True,
@@ -95,7 +95,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "humaneval",
         ("humaneval",),
-        "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+        "/home/hrh/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
         "verl/utils/reward_score/mbpp.py",
         "compute_score",
         False,
@@ -105,7 +105,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "humanevalplus",
         ("humanevalplus", "human-eval-plus"),
-        "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+        "/home/hrh/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
         "verl/utils/reward_score/mbpp.py",
         "compute_score",
         False,
@@ -115,7 +115,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "math",
         ("math",),
-        "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+        "/home/hrh/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
         "verl/utils/reward_score/math_verify.py",
         "compute_score",
         True,
@@ -125,7 +125,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "math-500",
         ("math-500",),
-        "/data/open_datasets/MATH-500/test.parquet",
+        "/home/hrh/open_datasets/MATH-500/test.parquet",
         "verl/utils/reward_score/math_verify.py",
         "compute_score",
         True,
@@ -135,7 +135,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "mbpp",
         ("mbpp",),
-        "/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
+        "/home/hrh/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
         "verl/utils/reward_score/mbpp.py",
         "compute_score",
         False,
@@ -145,7 +145,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "mbppplus",
         ("mbppplus", "mbpp-plus"),
-        "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+        "/home/hrh/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
         "verl/utils/reward_score/mbpp.py",
         "compute_score",
         False,
@@ -155,7 +155,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "numinamath",
         ("numinamath", "numinamath-CoT"),
-        "/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
+        "/home/hrh/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
         "verl/utils/reward_score/math_verify.py",
         "compute_score",
         True,
@@ -165,7 +165,7 @@ SPECS: list[EvalSpec] = [
     EvalSpec(
         "strategyQA",
         ("strategyQA",),
-        "/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
+        "/home/hrh/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
         "verl/utils/reward_score/truefalse.py",
         "compute_score",
         True,

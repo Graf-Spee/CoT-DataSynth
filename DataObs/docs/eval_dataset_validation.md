@@ -39,7 +39,7 @@ BFCL 不走 parquet reward function，`eval.sh bfcl ...` 会调用 `scripts/eval
 - status: `ok`
 - task_type: `multiple_choice`
 - expected_answer_format: Final answer should be an option label like (A), (B), (C), or (D).
-- path: `/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet`
+- path: `/home/hrh/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet`
 - rows: `1172`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `arc_challenge`
@@ -71,7 +71,7 @@ BASE_MODEL=/data/pretrain_models/Qwen2.5-0.5B-Instruct MODEL_NAME=Qwen2.5-0.5B-a
 - status: `ok`
 - task_type: `multiple_choice_math`
 - expected_answer_format: Final answer should be an option label like (A), (B), (C), (D), or (E).
-- path: `/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet`
+- path: `/home/hrh/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet`
 - rows: `254`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `aqua_rat`
@@ -102,7 +102,7 @@ BASE_MODEL=/data/pretrain_models/Qwen2.5-0.5B-Instruct MODEL_NAME=Qwen2.5-0.5B-a
 - status: `ok`
 - task_type: `multiple_choice`
 - expected_answer_format: Final answer should be an option label like (A), (B), (C), (D), or (E).
-- path: `/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet`
+- path: `/home/hrh/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet`
 - rows: `1221`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `commonsenseqa`
@@ -132,7 +132,7 @@ BASE_MODEL=/data/pretrain_models/Qwen2.5-0.5B-Instruct MODEL_NAME=Qwen2.5-0.5B-c
 - status: `ok`
 - task_type: `math_word_problem`
 - expected_answer_format: Final answer should include the numeric answer; prompts ask to output after "####".
-- path: `/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet`
+- path: `/home/hrh/open_datasets/GSM8K/main/test-00000-of-00001.parquet`
 - rows: `1319`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `gsm8k`
@@ -157,7 +157,7 @@ BASE_MODEL=/data/pretrain_models/Qwen2.5-0.5B-Instruct MODEL_NAME=Qwen2.5-0.5B-g
 - status: `ok`
 - task_type: `code_generation`
 - expected_answer_format: Final answer should be Python code in a markdown code block.
-- path: `/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet`
+- path: `/home/hrh/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet`
 - rows: `164`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `humaneval`
@@ -196,7 +196,7 @@ BASE_MODEL=/data/pretrain_models/Qwen2.5-0.5B-Instruct MODEL_NAME=Qwen2.5-0.5B-h
 - status: `ok`
 - task_type: `code_generation`
 - expected_answer_format: Final answer should be Python code in a markdown code block.
-- path: `/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet`
+- path: `/home/hrh/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet`
 - rows: `164`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `humanevalplus`
@@ -235,7 +235,7 @@ BASE_MODEL=/data/pretrain_models/Qwen2.5-0.5B-Instruct MODEL_NAME=Qwen2.5-0.5B-h
 - status: `ok`
 - task_type: `competition_math`
 - expected_answer_format: Final answer should be wrapped in \boxed{}.
-- path: `/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet`
+- path: `/home/hrh/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet`
 - rows: `12500`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `math`
@@ -265,7 +265,7 @@ BASE_MODEL=/data/pretrain_models/Qwen2.5-0.5B-Instruct MODEL_NAME=Qwen2.5-0.5B-m
 - status: `ok`
 - task_type: `competition_math`
 - expected_answer_format: Final answer should be wrapped in \boxed{}.
-- path: `/data/open_datasets/MATH-500/test.parquet`
+- path: `/home/hrh/open_datasets/MATH-500/test.parquet`
 - rows: `500`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `math-500`
@@ -290,7 +290,7 @@ BASE_MODEL=/data/pretrain_models/Qwen2.5-0.5B-Instruct MODEL_NAME=Qwen2.5-0.5B-m
 - status: `ok`
 - task_type: `code_generation`
 - expected_answer_format: Final answer should be Python code in a markdown code block.
-- path: `/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet`
+- path: `/home/hrh/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet`
 - rows: `257`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `mbpp`
@@ -323,7 +323,7 @@ BASE_MODEL=/data/pretrain_models/Qwen2.5-0.5B-Instruct MODEL_NAME=Qwen2.5-0.5B-m
 - status: `ok`
 - task_type: `code_generation`
 - expected_answer_format: Final answer should be Python code in a markdown code block.
-- path: `/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet`
+- path: `/home/hrh/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet`
 - rows: `378`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `mbppplus`
@@ -356,7 +356,7 @@ BASE_MODEL=/data/pretrain_models/Qwen2.5-0.5B-Instruct MODEL_NAME=Qwen2.5-0.5B-m
 - status: `ok`
 - task_type: `competition_math`
 - expected_answer_format: Final answer should be wrapped in \boxed{}.
-- path: `/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet`
+- path: `/home/hrh/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet`
 - rows: `100`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `numinamath`
@@ -385,7 +385,7 @@ BASE_MODEL=/data/pretrain_models/Qwen2.5-0.5B-Instruct MODEL_NAME=Qwen2.5-0.5B-n
 - status: `ok`
 - task_type: `true_false`
 - expected_answer_format: Final answer should contain "true" or "false".
-- path: `/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet`
+- path: `/home/hrh/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet`
 - rows: `687`
 - columns: `prompt, reward_model, data_source`
 - sample data_source: `strategyqa`

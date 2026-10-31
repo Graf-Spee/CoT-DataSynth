@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "attempt_id": "a0000",
+  "parent_attempt_id": null,
+  "hypothesis": "Establish a verified API-distillation baseline before changing data diversity and difficulty.",
+  "generation": {
+    "backend": "program",
+    "entrypoint": "synthesize.py",
+    "sampling": {"temperature": 0.7, "top_p": 0.95, "max_tokens": 2048},
+    "samples_per_task": 2,
+    "max_tasks": 64,
+    "template": "teacher.txt"
+  },
+  "postprocess": {"entrypoint": "postprocess.py"}
+}

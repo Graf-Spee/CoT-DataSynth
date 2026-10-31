@@ -355,23 +355,50 @@ def batched_generate(
     top_p: float,
     gen_batch_size: int,
     desc: str,
-) -> List[List[str]]:
-    """Run vLLM teacher generation over plain-text prompts in batches."""
+    checkpoint_dir: str | None = None,
+) -> tuple[List[List[str]], int]:
+    """Run vLLM teacher generation over plain-text prompts in batches.
+
+    Returns (outputs, start_idx) where start_idx is the first prompt index processed.
+    Supports resuming from checkpoint if checkpoint_dir is provided.
+    """
     outputs: List[List[str]] = []
-    for start in tqdm(range(0, len(prompts), gen_batch_size), desc=desc, unit="batch"):
+    start_idx = 0
+
+    if checkpoint_dir:
+        checkpoint_path = Path(checkpoint_dir) / "generation_checkpoint.json"
+        if checkpoint_path.is_file():
+            checkpoint_data = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+            start_idx = checkpoint_data.get("completed_prompts", 0)
+            completed_outputs = checkpoint_data.get("outputs", [])
+            outputs = completed_outputs
+            print(f"Resuming from prompt {start_idx}/{len(prompts)}")
+
+    for start in tqdm(range(start_idx, len(prompts), gen_batch_size), desc=desc, unit="batch"):
         batch = prompts[start : start + gen_batch_size]
         batch_messages = [[{"role": "user", "content": prompt}] for prompt in batch]
-        outputs.extend(
-            teacher.generate_batch(
-                messages_batch=batch_messages,
-                n=n,
-                max_new_tokens=max_new_tokens,
-                do_sample=do_sample,
-                temperature=temperature,
-                top_p=top_p,
-            )
+        batch_outputs = teacher.generate_batch(
+            messages_batch=batch_messages,
+            n=n,
+            max_new_tokens=max_new_tokens,
+            do_sample=do_sample,
+            temperature=temperature,
+            top_p=top_p,
         )
-    return outputs
+        outputs.extend(batch_outputs)
+
+        if checkpoint_dir:
+            checkpoint_path = Path(checkpoint_dir) / "generation_checkpoint.json"
+            checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+            checkpoint_data = {
+                "completed_prompts": start + len(batch),
+                "total_prompts": len(prompts),
+                "batch_size": gen_batch_size,
+                "outputs": outputs,
+            }
+            checkpoint_path.write_text(json.dumps(checkpoint_data), encoding="utf-8")
+
+    return outputs, start_idx
 
 
 def make_teacher(args: argparse.Namespace) -> LocalTeacher:
@@ -383,6 +410,8 @@ def make_teacher(args: argparse.Namespace) -> LocalTeacher:
         dtype=args.dtype,
         tensor_parallel_size=args.tensor_parallel_size,
         gpu_memory_utilization=args.gpu_memory_utilization,
+        enforce_eager=args.enforce_eager,
+        disable_custom_all_reduce=args.disable_custom_all_reduce,
     )
 
 
@@ -407,6 +436,12 @@ def add_common_args(parser: argparse.ArgumentParser, *, dataset_required: bool =
     parser.add_argument("--gen-batch-size", type=int, default=128)
     parser.add_argument("--tensor-parallel-size", type=int, default=1)
     parser.add_argument("--gpu-memory-utilization", type=float, default=0.95)
+    parser.add_argument("--enforce-eager", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument(
+        "--disable-custom-all-reduce",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+    )
     parser.add_argument("--correct-threshold", type=float, default=0.99)
     parser.add_argument("--disable-teacher-filter", action="store_true")
     parser.add_argument("--smoke-num-rows", type=int, default=0)

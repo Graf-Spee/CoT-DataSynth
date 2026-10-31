@@ -337,6 +337,9 @@ class LocalTeacher:
     dtype: str
     tensor_parallel_size: int
     gpu_memory_utilization: float
+    max_model_len: int | None = None
+    enforce_eager: bool = False
+    disable_custom_all_reduce: bool = False
 
     def __post_init__(self) -> None:
         # Keep tokenizer formatting logic from current script; generation backend moves to vLLM.
@@ -353,6 +356,9 @@ class LocalTeacher:
             tensor_parallel_size=self.tensor_parallel_size,
             gpu_memory_utilization=self.gpu_memory_utilization,
             dtype=self.dtype,
+            max_model_len=self.max_model_len,
+            enforce_eager=self.enforce_eager,
+            disable_custom_all_reduce=self.disable_custom_all_reduce,
         )
 
     def generate_batch(
@@ -564,6 +570,8 @@ def parse_args() -> argparse.Namespace:
         default=0.95,
         help="vLLM GPU memory utilization (0,1].",
     )
+    parser.add_argument("--enforce-eager", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--disable-custom-all-reduce", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument(
         "--correct-threshold",
         type=float,

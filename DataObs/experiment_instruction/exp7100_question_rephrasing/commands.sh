@@ -22,7 +22,7 @@ SIMILARITY_TYPE="${SIMILARITY_TYPE:-jaccard}"
 
 BASE_MODEL="${BASE_MODEL:-/data/pretrain_models/Qwen3-4B}"
 TEACHER_MODEL="${TEACHER_MODEL:-/data/pretrain_models/Qwen3-14B}"
-DISTILL_INPUT="${DISTILL_INPUT:-/data/open_datasets/GSM8K/main/train-00000-of-00001.parquet}"
+DISTILL_INPUT="${DISTILL_INPUT:-/home/hrh/open_datasets/GSM8K/main/train-00000-of-00001.parquet}"
 
 POOL_NUM_REPHRASES="${POOL_NUM_REPHRASES:-16}"
 MAX_SUBSET_N="${MAX_SUBSET_N:-8}"

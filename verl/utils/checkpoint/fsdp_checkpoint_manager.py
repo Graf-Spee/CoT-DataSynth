@@ -180,7 +180,30 @@ class FSDPCheckpointManager(BaseCheckpointManager):
         # record the previous global step
         self.previous_global_step = global_step
 
-        # remove previous local_path, only rank 0 should do this
+        # Seed retention from disk after a process restart, then retain only recent checkpoints.
+        if self.rank == 0 and max_ckpt_to_keep and isinstance(max_ckpt_to_keep, int) and max_ckpt_to_keep > 0 and not self.previous_saved_paths:
+            local_parent = os.path.dirname(local_path)
+            if os.path.basename(local_parent).startswith("global_step_"):
+                checkpoint_root = os.path.dirname(local_parent)
+                checkpoint_leaf = os.path.basename(local_path)
+                candidates = [
+                    os.path.join(item.path, checkpoint_leaf)
+                    for item in os.scandir(checkpoint_root)
+                    if item.is_dir() and item.name.startswith("global_step_") and os.path.isdir(os.path.join(item.path, checkpoint_leaf))
+                ]
+            else:
+                checkpoint_root = local_parent
+                candidates = [item.path for item in os.scandir(checkpoint_root) if item.is_dir() and item.name.startswith("global_step_")]
+
+            def checkpoint_step(path):
+                parent = os.path.basename(os.path.dirname(path))
+                name = parent if parent.startswith("global_step_") else os.path.basename(path)
+                suffix = name.removeprefix("global_step_")
+                return int(suffix) if suffix.isdigit() else -1
+
+            self.previous_saved_paths = sorted(candidates, key=checkpoint_step)
+
+        # Remove previous local paths, only rank 0 should do this.
         if self.rank == 0 and max_ckpt_to_keep and isinstance(max_ckpt_to_keep, int) and max_ckpt_to_keep > 0 and len(self.previous_saved_paths) >= max_ckpt_to_keep:
             keep_start = len(self.previous_saved_paths) - max_ckpt_to_keep + 1
             self.remove_previous_save_local_path(self.previous_saved_paths[:keep_start])

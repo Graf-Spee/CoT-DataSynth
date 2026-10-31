@@ -39,24 +39,29 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DATASET_CONFIG: dict[str, dict[str, Any]] = {
     "aime25": {
         "reward": "verl/utils/reward_score/math_verify.py",
-        "eval_data": "/data/open_datasets/AIME25/test.parquet",
+        "eval_data": "/home/hrh/open_datasets/AIME25/test.parquet",
         "score_without_reasoning": True,
     },
     "arc-challenge": {
         "reward": "verl/utils/reward_score/multiple_choice.py",
-        "eval_data": "/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
     },
     "aqua_rat": {
         "reward": "verl/utils/reward_score/multiple_choice.py",
-        "eval_data": "/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
     },
     "commonsenseQA": {
         "reward": "verl/utils/reward_score/multiple_choice.py",
-        "eval_data": "/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
     },
     "gsm8k": {
         "reward": "verl/utils/reward_score/gsm8k.py",
-        "eval_data": "/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
+    },
+    "gpqa-diamond": {
+        "reward": "verl/utils/reward_score/multiple_choice.py",
+        "eval_data": "/home/hrh/open_datasets/GPQA-Diamond/test/gpqa_diamond.parquet",
+        "score_without_reasoning": True,
     },
     "gpqa-diamond": {
         "reward": "verl/utils/reward_score/multiple_choice.py",
@@ -65,11 +70,16 @@ DATASET_CONFIG: dict[str, dict[str, Any]] = {
     },
     "humaneval": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
     },
     "humanevalplus": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+        "eval_data": "/home/hrh/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+    },
+    "ifeval": {
+        "eval_data": "/home/hrh/open_datasets/IFEval/input_data.jsonl",
+        "is_ifeval": True,
+        "score_without_reasoning": True,
     },
     "ifeval": {
         "eval_data": "/data/open_datasets/IFEval/input_data.jsonl",
@@ -78,23 +88,23 @@ DATASET_CONFIG: dict[str, dict[str, Any]] = {
     },
     "math-500": {
         "reward": "verl/utils/reward_score/math_verify.py",
-        "eval_data": "/data/open_datasets/MATH-500/test.parquet",
+        "eval_data": "/home/hrh/open_datasets/MATH-500/test.parquet",
     },
     "mbpp": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
     },
     "mbppplus": {
         "reward": "verl/utils/reward_score/mbpp.py",
-        "eval_data": "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+        "eval_data": "/home/hrh/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
     },
     "numinamath": {
         "reward": "verl/utils/reward_score/math_verify.py",
-        "eval_data": "/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
+        "eval_data": "/home/hrh/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
     },
     "strategyQA": {
         "reward": "verl/utils/reward_score/truefalse.py",
-        "eval_data": "/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
+        "eval_data": "/home/hrh/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
     },
 }
 

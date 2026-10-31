@@ -59,6 +59,7 @@ class SFTDataset(Dataset):
         if isinstance(tokenizer, str):
             tokenizer = hf_tokenizer(tokenizer)
         self.tokenizer: PreTrainedTokenizer = tokenizer
+        self.chat_template_kwargs = dict(config.get("apply_chat_template_kwargs", {}))
 
         self.prompt_key = prompt_key if isinstance(prompt_key, (tuple, list)) else [prompt_key]
         self.response_key = response_key if isinstance(response_key, (tuple, list)) else [response_key]
@@ -126,7 +127,8 @@ class SFTDataset(Dataset):
         prompt_chat = [{"role": "user", "content": prompt}]
 
         # string
-        prompt_chat_str = tokenizer.apply_chat_template(prompt_chat, add_generation_prompt=True, tokenize=False)
+        prompt_chat_str = tokenizer.apply_chat_template(prompt_chat, add_generation_prompt=True, tokenize=False,
+                                                       **self.chat_template_kwargs)
         response_chat_str = response + tokenizer.eos_token
 
         # tokenize

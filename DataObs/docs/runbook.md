@@ -173,7 +173,7 @@ python3 DataObs/scripts/experiment_pipeline.py \
   --stages distill,metrics,sft,sft_eval,grpo,grpo_eval \
   --gpu-ids 0 \
   --distill-dataset gsm8k \
-  --distill-input /data/open_datasets/GSM8K/main/train-00000-of-00001.parquet \
+  --distill-input /home/hrh/open_datasets/GSM8K/main/train-00000-of-00001.parquet \
   --teacher-num-samples 4 \
   --teacher-temperature 0.7 \
   --sft-epochs 1 \
@@ -183,7 +183,7 @@ python3 DataObs/scripts/experiment_pipeline.py \
 
 当前 `DataObs/lib/data_process/cot_distill_teacher_filter.py` 已支持普通 parquet 评测链路里的主数据集：`arc-challenge`、`aqua_rat`、`commonsenseqa`、`gsm8k`、`math`、`math-500`、`numinamath`、`strategyqa`、`mbpp`、`mbppplus`、`humaneval`、`humanevalplus`、。`bfcl` 是单独评测链路，暂不走这个 CoT distill filter。
 
-如果不传 `--distill-input`，pipeline 会按 `--dataset` 使用默认 seed parquet，例如 `gsm8k -> /data/open_datasets/GSM8K/main/train-00000-of-00001.parquet`。建议正式实验前先加 `--smoke-num-rows 32` 跑小样本。
+如果不传 `--distill-input`，pipeline 会按 `--dataset` 使用默认 seed parquet，例如 `gsm8k -> /home/hrh/open_datasets/GSM8K/main/train-00000-of-00001.parquet`。建议正式实验前先加 `--smoke-num-rows 32` 跑小样本。
 
 对于已有蒸馏数据：
 
@@ -356,7 +356,7 @@ DRY_RUN="" bash DataObs/experiment_instruction/exp3100_sft_rl_prompt_overlap/com
 
 ```bash
 DATASET=gsm8k
-SEED_INPUT=/data/open_datasets/GSM8K/main/train-00000-of-00001.parquet
+SEED_INPUT=/home/hrh/open_datasets/GSM8K/main/train-00000-of-00001.parquet
 SFT_RATIO=0.5
 SPLIT_SEED=42
 STAGES=distill,metrics,sft,sft_eval,grpo,grpo_eval
@@ -492,7 +492,7 @@ python3 DataObs/scripts/experiment_pipeline.py \
   --stages distill,metrics,sft,sft_eval \
   --gpu-ids 0 \
   --distill-dataset commonsenseqa \
-  --distill-input /data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet \
+  --distill-input /home/hrh/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet \
   --teacher-temperature 0.7 \
   --teacher-num-samples 4 \
   --teacher-do-sample \
@@ -575,7 +575,7 @@ python3 DataObs/scripts/experiment_pipeline.py \
 
 ## 11. 当前 Seed Data 怎么做
 
-现在的 seed data 主要就是 `/data/open_datasets/...` 下的 raw parquet。它们不是 SFT 的 `question/answer` 格式，而是 eval/RL 格式：
+现在的 seed data 主要就是 `/home/hrh/open_datasets/...` 下的 raw parquet。它们不是 SFT 的 `question/answer` 格式，而是 eval/RL 格式：
 
 - `prompt`: chat message list，teacher/generation/RL 都从这里读题。
 - `reward_model.ground_truth`: 规则 reward 用的标准答案或测试用例。

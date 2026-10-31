@@ -6,7 +6,7 @@
       "ai2_arc",
       "ai2-arc"
     ],
-    "path": "/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
+    "path": "/home/hrh/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet",
     "task_type": "multiple_choice",
     "expected_answer_format": "Final answer should be an option label like (A), (B), (C), or (D).",
     "calc_maj": true,
@@ -40,7 +40,7 @@
       "aqua_rat",
       "aqua-rat"
     ],
-    "path": "/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
+    "path": "/home/hrh/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet",
     "task_type": "multiple_choice_math",
     "expected_answer_format": "Final answer should be an option label like (A), (B), (C), (D), or (E).",
     "calc_maj": true,
@@ -73,7 +73,7 @@
     "aliases": [
       "commonsenseQA"
     ],
-    "path": "/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
+    "path": "/home/hrh/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet",
     "task_type": "multiple_choice",
     "expected_answer_format": "Final answer should be an option label like (A), (B), (C), (D), or (E).",
     "calc_maj": true,
@@ -106,7 +106,7 @@
     "aliases": [
       "gsm8k"
     ],
-    "path": "/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
+    "path": "/home/hrh/open_datasets/GSM8K/main/test-00000-of-00001.parquet",
     "task_type": "math_word_problem",
     "expected_answer_format": "Final answer should include the numeric answer; prompts ask to output after \"####\".",
     "calc_maj": true,
@@ -139,7 +139,7 @@
     "aliases": [
       "humaneval"
     ],
-    "path": "/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
+    "path": "/home/hrh/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet",
     "task_type": "code_generation",
     "expected_answer_format": "Final answer should be Python code in a markdown code block.",
     "calc_maj": false,
@@ -177,7 +177,7 @@
       "humanevalplus",
       "human-eval-plus"
     ],
-    "path": "/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
+    "path": "/home/hrh/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet",
     "task_type": "code_generation",
     "expected_answer_format": "Final answer should be Python code in a markdown code block.",
     "calc_maj": false,
@@ -214,7 +214,7 @@
     "aliases": [
       "math"
     ],
-    "path": "/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
+    "path": "/home/hrh/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet",
     "task_type": "competition_math",
     "expected_answer_format": "Final answer should be wrapped in \\boxed{}.",
     "calc_maj": true,
@@ -247,7 +247,7 @@
     "aliases": [
       "math-500"
     ],
-    "path": "/data/open_datasets/MATH-500/test.parquet",
+    "path": "/home/hrh/open_datasets/MATH-500/test.parquet",
     "task_type": "competition_math",
     "expected_answer_format": "Final answer should be wrapped in \\boxed{}.",
     "calc_maj": true,
@@ -280,7 +280,7 @@
     "aliases": [
       "mbpp"
     ],
-    "path": "/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
+    "path": "/home/hrh/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet",
     "task_type": "code_generation",
     "expected_answer_format": "Final answer should be Python code in a markdown code block.",
     "calc_maj": false,
@@ -322,7 +322,7 @@
       "mbppplus",
       "mbpp-plus"
     ],
-    "path": "/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
+    "path": "/home/hrh/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet",
     "task_type": "code_generation",
     "expected_answer_format": "Final answer should be Python code in a markdown code block.",
     "calc_maj": false,
@@ -360,7 +360,7 @@
       "numinamath",
       "numinamath-CoT"
     ],
-    "path": "/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
+    "path": "/home/hrh/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet",
     "task_type": "competition_math",
     "expected_answer_format": "Final answer should be wrapped in \\boxed{}.",
     "calc_maj": true,
@@ -393,7 +393,7 @@
     "aliases": [
       "strategyQA"
     ],
-    "path": "/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
+    "path": "/home/hrh/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet",
     "task_type": "true_false",
     "expected_answer_format": "Final answer should contain \"true\" or \"false\".",
     "calc_maj": true,

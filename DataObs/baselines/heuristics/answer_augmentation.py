@@ -60,8 +60,17 @@ def run(args: argparse.Namespace) -> None:
         build_answer_aug_prompt(args.dataset, row["question"], args.use_original_metamath_prompt)
         for row in rows
     ]
+
+    # Determine checkpoint directory
+    checkpoint_dir = None
+    if hasattr(args, 'checkpoint_dir') and args.checkpoint_dir:
+        checkpoint_dir = args.checkpoint_dir
+    elif hasattr(args, 'output_file') and args.output_file:
+        from pathlib import Path
+        checkpoint_dir = str(Path(args.output_file).parent / ".checkpoints")
+
     # Stage 2: sample multiple reasoning paths from the teacher.
-    answer_outputs = batched_generate(
+    answer_outputs, start_idx = batched_generate(
         teacher,
         prompts,
         n=args.num_augmented_answers,
@@ -71,6 +80,7 @@ def run(args: argparse.Namespace) -> None:
         top_p=args.top_p,
         gen_batch_size=args.gen_batch_size,
         desc="Answer augmentation stage",
+        checkpoint_dir=checkpoint_dir,
     )
 
     output_rows: List[Dict[str, Any]] = []
@@ -145,6 +155,12 @@ def parse_args() -> argparse.Namespace:
         "--use-original-metamath-prompt",
         action="store_true",
         help="Use the short two-shot math prompt from rephrase_questions.py instead of dataset-specific prompts.",
+    )
+    parser.add_argument(
+        "--checkpoint-dir",
+        type=str,
+        default=None,
+        help="Directory to save generation checkpoints for recovery. If not specified, uses output_file parent directory.",
     )
     args = parser.parse_args()
     if args.num_augmented_answers < 1:

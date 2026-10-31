@@ -4,7 +4,7 @@
 
 if [ "$#" -lt 5 ]; then
     echo "Usage: bash $0 <checkpoint_path> <base_model> <dataset_name> <output_path> <gpu_id>"
-    echo "Example: bash $0 /data/hrh/COT/GSM8K/training/split_0/global_step_2 /data/pretrain_models/Qwen2.5-0.5B-Instruct /data/open_datasets/GSM8K/main/test-00000-of-00001.parquet /data/hrh/COT/GSM8K/eval/split_0 0"
+    echo "Example: bash $0 /data/hrh/COT/GSM8K/training/split_0/global_step_2 /data/pretrain_models/Qwen2.5-0.5B-Instruct /home/hrh/open_datasets/GSM8K/main/test-00000-of-00001.parquet /data/hrh/COT/GSM8K/eval/split_0 0"
     exit 1
 fi
 
@@ -52,66 +52,66 @@ shopt -s nocasematch    # Enable caseless match
 case $DATA_NAME in
     "ai2_arc" | "ai2-arc" | "arc-challenge")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/multiple_choice.py"
-        EVAL_DATA="/data/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/ai2_arc/ARC-Challenge/test-00000-of-00001.parquet"
         echo "[INFO] Load config for ARC-Challenge: Success!"
         ;;
     "aqua_rat" | "aqua-rat")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/multiple_choice.py"
-        EVAL_DATA="/data/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/aqua_rat/raw/test-00000-of-00001.parquet"
         echo "[INFO] Load config for AQuA-RAT: Success!"
         ;;
     "commonsenseQA")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/multiple_choice.py"
-        EVAL_DATA="/data/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/CommonsenseQA/data/validation-00000-of-00001.parquet"
         echo "[INFO] Load config for CommonsenseQA: Success!"
         ;;
     "gsm8k")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/gsm8k.py"
-        EVAL_DATA="/data/open_datasets/GSM8K/main/test-00000-of-00001.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/GSM8K/main/test-00000-of-00001.parquet"
         echo "[INFO] Load config for GSM8K: Success!"
         ;;
     "humaneval")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/mbpp.py"
-        EVAL_DATA="/data/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/humaneval/openai_humaneval/test-00000-of-00001.parquet"
         CALC_MAJ=0
         echo "[INFO] Load config for HumanEval: Success!"
         ;;
     "humanevalplus" | "human-eval-plus")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/mbpp.py"
-        EVAL_DATA="/data/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/humanevalplus/data/test-00000-of-00001-5973903632b82d40.parquet"
         CALC_MAJ=0
         echo "[INFO] Load config for HumanEvalPlus: Success!"
         ;;
     "math")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/math_verify.py"
-        EVAL_DATA="/data/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/MATH/data/train-00000-of-00001-7320a6f3aba8ebd2.parquet"
         echo "[INFO] Load config for MATH: Success!"
         ;;
     "math-500" | "math-cot")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/math_verify.py"
-        EVAL_DATA="/data/open_datasets/MATH-500/test.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/MATH-500/test.parquet"
         echo "[INFO] Load config for MATH-500: Success!"
         ;;
     "mbpp")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/mbpp.py"
-        EVAL_DATA="/data/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/mbpp/sanitized/test-00000-of-00001.parquet"
         CALC_MAJ=0
         echo "[INFO] Load config for MBPP: Success!"
         ;;
     "mbppplus" | "mbpp-plus")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/mbpp.py"
-        EVAL_DATA="/data/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/mbppplus/data/test-00000-of-00001-d5781c9c51e02795.parquet"
         CALC_MAJ=0
         echo "[INFO] Load config for MBPPPlus: Success!"
         ;;
     "numinamath" | "numinamath-CoT")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/math_verify.py"
-        EVAL_DATA="/data/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/NuminaMath-CoT/data/test-00000-of-00001.parquet"
         echo "[INFO] Load config for NuminaMath-CoT: Success!"
         ;;
     "strategyQA")
         REWARD_FUNCTION_PATH="${REPO_DIR}/verl/utils/reward_score/truefalse.py"
-        EVAL_DATA="/data/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet"
+        EVAL_DATA="/home/hrh/open_datasets/StrategyQA/data/test-00000-of-00001-bae602f3ee37f4ca.parquet"
         echo "[INFO] Load config for StrategyQA: Success!"
         ;;
     "bfcl")

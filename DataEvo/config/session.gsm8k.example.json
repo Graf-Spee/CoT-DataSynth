@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "dataset": "gsm8k",
+  "base_model": "/absolute/path/to/student-base",
+  "python": "/absolute/path/to/training-env/bin/python",
+  "data": {
+    "seed": "/absolute/data/gsm8k/train_seed.parquet",
+    "sft_val": "/absolute/data/gsm8k/sft_val.parquet",
+    "rl_train": "/absolute/data/gsm8k/rl_train.parquet",
+    "rl_val": "/absolute/data/gsm8k/dev.parquet",
+    "dev": "/absolute/data/gsm8k/dev.parquet",
+    "probe": "/absolute/data/gsm8k/probe.parquet",
+    "final_test": "/absolute/data/gsm8k/test.parquet"
+  },
+  "resources": {
+    "gpu_ids": ["1", "2", "3"],
+    "gpu_count": 1,
+    "lock_dir": "/tmp/dataevo-gpu-leases",
+    "check_gpu_memory": true,
+    "max_used_memory_mib": 1024,
+    "wait_timeout_s": 600
+  },
+  "teacher_api": {
+    "base_url_env": "SYNTHESIS_API_BASE",
+    "api_key_env": "SYNTHESIS_API_KEY",
+    "model": "configure-your-teacher-model",
+    "timeout_s": 180
+  },
+  "training": {
+    "pipeline_args": {
+      "sft-epochs": 100,
+      "sft-arg": ["data.max_length=4096", "trainer.save_freq=50", "trainer.total_training_steps=100"],
+      "grpo-arg": ["trainer.total_training_steps=100", "trainer.save_freq=50", "actor_rollout_ref.rollout.response_length=2048"]
+    }
+  },
+  "evaluation": {
+    "backend": "vllm",
+    "pipeline_args": {
+      "eval-num-samples": 1,
+      "eval-temperature": 0.0,
+      "eval-max-response-len": 4096,
+      "eval-seed": 42
+    }
+  },
+  "codex": {
+    "executable": "codex",
+    "sandbox": "workspace-write",
+    "timeout_s": 1800
+  },
+  "budget": {
+    "max_attempts": 3,
+    "stage_timeout_s": 14400,
+    "session_timeout_s": 172800,
+    "max_rows": 10000,
+    "max_api_tokens": 2000000
+  }
+}

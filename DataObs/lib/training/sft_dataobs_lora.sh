@@ -98,6 +98,11 @@ trainer.save_freq=10000 \
 trainer.test_freq=10000 \
 trainer.default_hdfs_dir=null"
 
+if [ -n "${RESUME_PATH:-}" ]; then
+    SFT_ARGS="${SFT_ARGS} \
+trainer.resume_path=${RESUME_PATH}"
+fi
+
 SFT_ARGS="${SFT_ARGS} \
 ulysses_sequence_parallel_size=${ulysses_sequence_parallel_size} \
 model.lora_rank=8 \

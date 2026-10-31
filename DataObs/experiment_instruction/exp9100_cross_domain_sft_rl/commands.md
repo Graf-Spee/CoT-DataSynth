@@ -46,7 +46,7 @@ ${PYTHON} DataObs/scripts/experiment_pipeline_vllm.py \
   --grpo-env LOG_PROB_MICRO_BATCH_SIZE_PER_GPU=8 \
   --grpo-env ROLLOUT_N=4 \
   --grpo-env MAX_PROMPT_LEN=512 \
-  --grpo-env MAX_RESPONSE_LEN=2048 \
+  --grpo-env MAX_RESPONSE_LEN=4096 \
   --grpo-env LR=5e-7 \
   --grpo-env KL_COEF=0.001 \
   --grpo-env GPU_MEMORY_UTILIZATION=0.6 \
@@ -161,7 +161,7 @@ ${PYTHON} DataObs/scripts/experiment_pipeline_vllm.py \
   --grpo-env LOG_PROB_MICRO_BATCH_SIZE_PER_GPU=8 \
   --grpo-env ROLLOUT_N=4 \
   --grpo-env MAX_PROMPT_LEN=512 \
-  --grpo-env MAX_RESPONSE_LEN=2048 \
+  --grpo-env MAX_RESPONSE_LEN=4096 \
   --grpo-env LR=5e-7 \
   --grpo-env KL_COEF=0.001 \
   --grpo-env GPU_MEMORY_UTILIZATION=0.6 \
